@@ -1,0 +1,62 @@
+{
+ "series": [
+  "엔토브",
+  "로이도어"
+ ],
+ "glass": {
+  "counts": [
+   0,
+   1,
+   2
+  ],
+  "materials": [
+   "glass",
+   "panel"
+  ],
+  "sideMaterials": [
+   "glass",
+   "panel"
+  ]
+ },
+ "transom": {
+  "counts": [
+   0,
+   1
+  ],
+  "materials": [
+   "glass",
+   "panel"
+  ]
+ },
+ "hinge": [
+  "L",
+  "R"
+ ],
+ "size": {
+  "fw": {
+   "default": 1500,
+   "min": 900,
+   "max": 3000
+  },
+  "fh": {
+   "default": 2300,
+   "min": 1800,
+   "max": 3000
+  },
+  "dw": {
+   "default": 900,
+   "min": 700,
+   "max": 1200
+  },
+  "handleMM": {
+   "default": 1600,
+   "min": 600,
+   "max": 2400
+  }
+ },
+ "frame": {
+  "normalMM": 35,
+  "entobHandleSideMM": 100
+ },
+ "entobKeyFromBottomMM": 1000
+}

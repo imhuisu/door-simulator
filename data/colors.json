@@ -1,0 +1,182 @@
+[
+ {
+  "id": "ash-white",
+  "name": "애쉬화이트",
+  "cat": "steel",
+  "color": "#e0d8cf",
+  "grain": "#f6eee5",
+  "texture": "wood"
+ },
+ {
+  "id": "mocha-brown",
+  "name": "모카브라운",
+  "cat": "steel",
+  "color": "#6f4f2f",
+  "grain": "#856545",
+  "texture": "wood"
+ },
+ {
+  "id": "birch-gray",
+  "name": "버치그레이",
+  "cat": "steel",
+  "color": "#6b6058",
+  "grain": "#81766e",
+  "texture": "wood"
+ },
+ {
+  "id": "ebony-wood",
+  "name": "에보니우드",
+  "cat": "steel",
+  "color": "#282020",
+  "grain": "#3e3636",
+  "texture": "wood"
+ },
+ {
+  "id": "dark-oak",
+  "name": "다크오크",
+  "cat": "steel",
+  "color": "#42382e",
+  "grain": "#584e44",
+  "texture": "wood"
+ },
+ {
+  "id": "dark-suss",
+  "name": "다크서스",
+  "cat": "steel",
+  "color": "#a6a39c",
+  "grain": "#bcb9b2",
+  "texture": "metal"
+ },
+ {
+  "id": "silky-blue",
+  "name": "실키블루",
+  "cat": "steel",
+  "color": "#142c44",
+  "grain": "#2a425a",
+  "texture": "metal"
+ },
+ {
+  "id": "forest-green",
+  "name": "포레스트그린",
+  "cat": "steel",
+  "color": "#0c3330",
+  "grain": "#224946",
+  "texture": "wood"
+ },
+ {
+  "id": "zinc-black",
+  "name": "징크블랙",
+  "cat": "steel",
+  "color": "#26241f",
+  "grain": "#3c3a35",
+  "texture": "metal"
+ },
+ {
+  "id": "light-walnut",
+  "name": "라이트월넛",
+  "cat": "steel",
+  "color": "#6a5038",
+  "grain": "#80664e",
+  "texture": "wood"
+ },
+ {
+  "id": "autumn",
+  "name": "어텀",
+  "cat": "steel",
+  "color": "#7a4524",
+  "grain": "#905b3a",
+  "texture": "wood"
+ },
+ {
+  "id": "corten-brown",
+  "name": "코르텐브라운",
+  "cat": "steel",
+  "color": "#7a4a38",
+  "grain": "#90604e",
+  "texture": "stone"
+ },
+ {
+  "id": "river-stone",
+  "name": "리버스톤",
+  "cat": "steel",
+  "color": "#62615e",
+  "grain": "#787774",
+  "texture": "stone"
+ },
+ {
+  "id": "particle-gray",
+  "name": "파티클그레이",
+  "cat": "steel",
+  "color": "#474b4e",
+  "grain": "#5d6164",
+  "texture": "weave"
+ },
+ {
+  "id": "tartan-black",
+  "name": "타탄블랙",
+  "cat": "steel",
+  "color": "#2c2a26",
+  "grain": "#42403c",
+  "texture": "weave"
+ },
+ {
+  "id": "rista-black",
+  "name": "리스타블랙",
+  "cat": "steel",
+  "color": "#1a1512",
+  "grain": "#302b28",
+  "texture": "metal"
+ },
+ {
+  "id": "caramel-oak",
+  "name": "카라멜오크",
+  "cat": "steel",
+  "color": "#8a5a28",
+  "grain": "#a0703e",
+  "texture": "wood",
+  "image": "/textures/caramel-oak.jpg"
+ },
+ {
+  "id": "zinc-silver",
+  "name": "징크실버",
+  "cat": "steel",
+  "color": "#6b6b6b",
+  "grain": "#818181",
+  "texture": "metal"
+ },
+ {
+  "id": "charcoal-green",
+  "name": "차콜그린",
+  "cat": "steel",
+  "color": "#344148",
+  "grain": "#4a575e",
+  "texture": "weave"
+ },
+ {
+  "id": "mahogany",
+  "name": "마호가니",
+  "cat": "wood",
+  "color": "#6b3f33",
+  "grain": "#85564a",
+  "texture": "wood",
+  "image": "/textures/mahogany.jpg"
+ },
+ {
+  "id": "pitch-pine",
+  "name": "피치파인",
+  "cat": "wood",
+  "color": "#b58a52",
+  "grain": "#cda268",
+  "texture": "wood",
+  "image": "/textures/pitch-pine.jpg"
+ },
+ {
+  "id": "red-cedar",
+  "name": "적삼목",
+  "cat": "wood",
+  "color": "#9a6a3c",
+  "grain": "#b07e4c",
+  "texture": "wood",
+  "image": "/textures/red-cedar.jpg"
+ }
+]

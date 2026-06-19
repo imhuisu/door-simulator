@@ -1,0 +1,24 @@
+[
+ {
+  "id": "embedded",
+  "name": "매립형 키",
+  "series": "엔토브",
+  "image": "/ref/digitalkey/%EB%A7%A4%EB%A6%BD%ED%82%A4.jpg"
+ },
+ {
+  "id": "게이트아이",
+  "name": "푸시풀",
+  "series": "로이도어",
+  "image": "/ref/digitalkey/%EA%B2%8C%EC%9D%B4%ED%8A%B8%EC%95%84%EC%9D%B4.png",
+  "w": 83,
+  "h": 345
+ },
+ {
+  "id": "하이원골드",
+  "name": "오토락지문키",
+  "series": "로이도어",
+  "image": "/ref/digitalkey/%ED%95%98%EC%9D%B4%EC%9B%90%EA%B3%A8%EB%93%9C.png",
+  "w": 90,
+  "h": 345
+ }
+]

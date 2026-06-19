@@ -1,0 +1,13 @@
+{
+  "name": "door-simulator",
+  "version": "1.0.0",
+  "description": "엔토브/로이도어 현관문 컨피규레이터 - 브라우저/서버 공용 렌더 엔진",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.33.5"
+  },
+  "note": "기본은 순수 http 서버라 의존성 없이 실행됩니다. PNG/JPEG 다운로드가 필요하면 'npm i sharp' 후 server/index.js의 변환 주석을 활성화하세요."
+}

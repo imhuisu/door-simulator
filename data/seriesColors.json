@@ -1,0 +1,26 @@
+{
+  "강판": [
+    {"code": "ZB", "name": "징크블랙",    "line": "메탈"},
+    {"code": "ZS", "name": "징크실버",    "line": "메탈"},
+    {"code": "TB", "name": "타탄블랙",    "line": "메탈"},
+    {"code": "SB", "name": "실키블루",    "line": "메탈"},
+    {"code": "CG", "name": "챠콜그린",    "line": "메탈"},
+    {"code": "FG", "name": "포레스트그린", "line": "메탈"},
+    {"code": "PG", "name": "파티클그레이", "line": "메탈"},
+    {"code": "RS", "name": "리버스톤",    "line": "메탈"},
+    {"code": "CB", "name": "코르텐브라운", "line": "메탈"},
+    {"code": "AT", "name": "어텀",        "line": "우드"},
+    {"code": "AW", "name": "애쉬화이트",  "line": "우드"},
+    {"code": "BG", "name": "버치그레이",  "line": "우드"},
+    {"code": "BT", "name": "베이직티크",  "line": "우드"},
+    {"code": "CO", "name": "카라멜오크",  "line": "우드"},
+    {"code": "CW", "name": "카카오월넛",  "line": "우드"},
+    {"code": "DO", "name": "다크오크",    "line": "우드"},
+    {"code": "EW", "name": "에보니우드",  "line": "우드"},
+    {"code": "MB", "name": "모카브라운",  "line": "우드"}
+  ],
+  "목재": [
+    {"code": "마호가니", "name": "마호가니"},
+    {"code": "피치파인", "name": "피치파인"}
+  ]
+}

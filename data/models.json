@@ -1,0 +1,248 @@
+[
+ {
+  "id": "E301",
+  "series": "엔토브",
+  "design": "plain",
+  "defaultColor": "corten-brown",
+  "colorFolder": "강판",
+  "keyType": "embedded",
+  "handleCustom": true
+ },
+ {
+  "id": "E302",
+  "series": "엔토브",
+  "design": "vplank",
+  "defaultColor": "마호가니",
+  "colorFolder": "목재",
+  "keyType": "embedded",
+  "handleCustom": true,
+  "colors": [
+    {"code": "마호가니", "name": "마호가니"},
+    {"code": "피치파인", "name": "피치파인"}
+  ],
+  "handleColorMap": {
+    "마호가니": "마호가니(303)",
+    "피치파인": "피치파인(303)"
+  }
+ },
+ {
+  "id": "E303",
+  "series": "엔토브",
+  "design": "vplank",
+  "defaultColor": "피치파인(303)",
+  "colorFolder": "목재",
+  "colors": [
+    {"code": "피치파인(303)", "name": "피치파인(303)"},
+    {"code": "마호가니(303)", "name": "마호가니(303)"}
+  ],
+  "keyType": "embedded",
+  "handleCustom": true,
+  "handleColorMap": {
+    "피치파인(303)": "피치파인(303)",
+    "마호가니(303)": "마호가니(303)"
+  }
+ },
+ {
+  "id": "E304",
+  "series": "엔토브",
+  "design": "hplank",
+  "defaultColor": "마호가니(가로)",
+  "colorFolder": "목재",
+  "keyType": "embedded",
+  "handleCustom": true,
+  "colors": [
+    {"code": "마호가니(가로)", "name": "마호가니"},
+    {"code": "피치파인(가로)", "name": "피치파인"}
+  ],
+  "handleColorMap": {
+    "마호가니(가로)": "마호가니(303)",
+    "피치파인(가로)": "피치파인(303)"
+  }
+ },
+ {
+  "id": "E305",
+  "series": "엔토브",
+  "design": "cross",
+  "defaultColor": "caramel-oak",
+  "colorFolder": "강판",
+  "keyType": "embedded",
+  "handleCustom": true,
+  "stenFrom": 700,
+  "stenTo": 900,
+  "stenColor": "#1a1a1e"
+ },
+ {
+  "id": "E306",
+  "series": "엔토브",
+  "design": "lowbar",
+  "defaultColor": "dark-oak",
+  "colorFolder": "강판",
+  "keyType": "embedded",
+  "handleCustom": true,
+  "stenFrom": 700,
+  "stenTo": 900,
+  "stenColor": "#bfc1c5",
+  "stenDS": true
+ },
+ {
+  "id": "L103",
+  "series": "로이도어",
+  "design": "squares",
+  "designParams": { "count": 5, "size": 100, "topMargin": 250, "botMargin": 250, "glass": true, "protrude": 20 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L106",
+  "series": "로이도어",
+  "design": "vmoldings",
+  "designParams": {
+    "count": 5, "width": 40, "gap": 40, "frameW": 8, "frameH": 2,
+    "colors": ["panel", "ds", "ds", "ds", "panel"],
+    "protrude": 20
+  },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L111",
+  "series": "로이도어",
+  "design": "splitstrips",
+  "designParams": { "mw": 40, "gw": 40, "hingeInitGap": 40, "hingeStop": 200, "keyStop": 30, "frameW": 8, "frameH": 2, "protrude": 20 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L113",
+  "series": "로이도어",
+  "design": "threecol",
+  "designParams": { "baseAreaW": 700, "moldW": 20, "moldCount": 6, "frameW": 8, "frameH": 2, "moldFrameW": 5, "protrude": 20 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L115",
+  "series": "로이도어",
+  "design": "keystrips",
+  "designParams": { "moldW": 100, "gap": 50, "count": 5, "frameW": 8, "protrude": 20 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L117",
+  "series": "로이도어",
+  "design": "plain",
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L118",
+  "series": "로이도어",
+  "design": "slit",
+  "designParams": { "hingeOffMM": 150, "glassW": 60, "frameW": 40, "topMM": 250, "protrude": 20 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L120",
+  "series": "로이도어",
+  "design": "keycol",
+  "designParams": { "keyW": 200, "stripW": 10 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L121",
+  "series": "로이도어",
+  "design": "moldglass",
+  "designParams": { "hingeGap": 100, "moldW1": 100, "gap1": 40, "frameW": 40, "glassW": 60, "topMM": 250, "gap2": 40, "moldW2": 200, "moldFrameW": 8, "moldFrameH": 2, "protrude": 20 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L122",
+  "series": "로이도어",
+  "design": "gothic",
+  "designParams": { "lineW": 10, "lineGap": 100, "lineCount": 4, "glassW": 180, "glassH": 250, "topOff": 300, "frameW": 30 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L123",
+  "series": "로이도어",
+  "design": "keysplit",
+  "designParams": { "keyPanelW": 200, "sepW": 10, "splitCount": 5, "splitBarW": 10 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L126",
+  "series": "로이도어",
+  "design": "hingecol",
+  "designParams": { "hingePanel": 200, "sepW": 10, "dsW": 150, "sqCount": 5, "sqSize": 100, "sqTopM": 250, "sqBotM": 250, "protrude": 20 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L127",
+  "series": "로이도어",
+  "design": "plain",
+  "defaultColor": "ash-white",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "frameSameColor": true,
+  "colors": [
+    {"code": "화이트", "name": "화이트"},
+    {"code": "웜그레이", "name": "웜그레이"}
+  ],
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L128",
+  "series": "로이도어",
+  "design": "plain",
+  "defaultColor": "마호가니(가로)",
+  "keyType": "select",
+  "colorFolder": "목재",
+  "panelRealH": 2400,
+  "colors": [
+    {"code": "마호가니(가로)", "name": "마호가니"},
+    {"code": "피치파인(가로)", "name": "피치파인"}
+  ],
+  "keyOptions": ["게이트아이", "하이원골드"]
+ },
+ {
+  "id": "L129",
+  "series": "로이도어",
+  "design": "hingestrips",
+  "designParams": { "hingeGap": 150, "moldW": 20, "moldGap": 100, "count": 5, "frameW": 3, "frameH": 2, "protrude": 20 },
+  "defaultColor": "ebony-wood",
+  "keyType": "select",
+  "colorFolder": "강판",
+  "keyOptions": ["게이트아이", "하이원골드"]
+ }
+]

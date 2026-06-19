@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>도어시뮬레이터</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=IBM+Plex+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f2ee;--panel:#fff;--line:#e2ddd4;--txt:#2a2724;--mut:#8a857c;--acc:#b06a3a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans KR',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+.topbar{padding:10px 28px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:center;gap:14px}
+.topbar-logo{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block}
+.topbar h1{font-family:'Archivo';font-weight:800;font-size:20px}
+.topbar .sub{color:var(--mut);font-size:12px;letter-spacing:2px;text-transform:uppercase}
+
+/* ── 3-column layout (color panel width = auto, expands with sections) ── */
+.wrap{flex:1;display:grid;grid-template-columns:330px auto 1fr}
+@media(max-width:1200px){.wrap{grid-template-columns:280px auto 1fr}}
+@media(max-width:800px){
+  .wrap{grid-template-columns:1fr}
+  .panel,.cpanel{
+    max-height:none;
+    overflow-y:visible;
+    border-right:none;
+    border-bottom:1px solid var(--line)
+  }
+  .stage{min-height:auto;padding:16px}
+  /* 복잡한 SVG(L111 등)에서 drop-shadow가 메인스레드 블록하는 문제 방지:
+     필터 간소화 + GPU 레이어 분리 */
+  #doorSvg{
+    height:auto;max-height:55vh;max-width:85%;
+    filter:drop-shadow(0 6px 16px rgba(60,50,40,.20));
+    will-change:transform
+  }
+  .btn{padding:11px 8px;font-size:13px;min-height:44px}
+  .series-btn{min-height:48px;padding:14px 8px}
+  .model-trigger{min-height:48px}
+  .sw{padding:8px 10px}
+  .sw .sw-thumb{width:44px;height:44px}
+  #baseColorSec .color-line-label,
+  #moldColorSec .color-line-label{display:none}
+  /* 모바일: 컬러 컬럼 세로 스택 */
+  .cpanel{overflow-y:visible;max-height:none}
+  .cpanel-cols{flex-direction:column;max-height:none;overflow-y:visible}
+  .color-col{flex:0 0 auto;width:100%}
+  .color-col+.color-col{border-left:none;border-top:1px solid var(--line)}
+}
+
+/* ── 터치 응답성 개선 (300ms 딜레이 제거) ── */
+.btn,.series-btn,.model-trigger,.sw,.keycard,.model-card,.color-line-btn{
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation
+}
+
+/* ── 모바일 컬러 라인 버튼 ── */
+.color-line-btn{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;border:1px solid var(--line);border-radius:10px;
+  background:#faf8f4;cursor:pointer;font-family:inherit;
+  font-size:13px;font-weight:600;color:var(--txt);margin-bottom:8px;transition:.15s
+}
+.color-line-btn:active{background:#f0ece6;border-color:#c9c2b5}
+.clb-right{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:12px;font-weight:400}
+.clb-swatch{width:22px;height:22px;border-radius:4px;overflow:hidden;flex-shrink:0;border:1px solid var(--line)}
+.clb-swatch img{width:100%;height:100%;object-fit:cover;display:block}
+.clb-arr{color:var(--mut);font-size:18px;line-height:1;font-weight:300;margin-left:2px}
+
+/* ── panels ── */
+.panel,.cpanel{background:var(--panel);overflow-y:auto;max-height:calc(100vh - 53px)}
+.panel{border-right:1px solid var(--line);padding:0}
+.cpanel{border-right:1px solid var(--line);padding:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── 컬러 패널: 섹션별 가로 컬럼 ── */
+.cpanel-cols{display:flex;flex-direction:row;align-items:flex-start;overflow-y:auto;max-height:calc(100vh - 100px)}
+.color-col{flex:0 0 220px;width:220px;padding:16px 18px}
+.color-col+.color-col{border-left:1px solid var(--line)}
+.panel-head{padding:14px 18px 10px;border-bottom:1px solid var(--line);font-family:'Archivo';font-weight:800;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);position:sticky;top:0;background:#fff;z-index:10}
+.panel-body{padding:16px 18px}
+.sec{margin-bottom:20px}
+.sec-label{font-family:'Archivo';font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:8px}
+
+/* ── buttons ── */
+.toggle{display:grid;grid-template-columns:repeat(auto-fit,minmax(56px,1fr));gap:5px}
+.toggle2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.toggle3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.toggle4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px}
+.toggle5{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:5px}
+.btn{padding:8px 6px;border:1px solid var(--line);border-radius:8px;background:#faf8f4;cursor:pointer;text-align:center;font-size:12px;color:var(--mut);transition:.15s;font-family:inherit}
+.btn:hover{border-color:#c9c2b5}
+.btn.on{border-color:var(--acc);color:var(--txt);background:#fbf2ea;font-weight:600}
+.btn-lg{padding:10px 8px;font-size:13px;border-radius:10px}
+
+/* ── series buttons ── */
+.series-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.series-btn{padding:12px 8px;border:1px solid var(--line);border-radius:10px;background:#faf8f4;cursor:pointer;text-align:center;font-size:13px;font-weight:600;color:var(--mut);transition:.15s;font-family:inherit;line-height:1.3}
+.series-btn:hover{border-color:#c9c2b5}
+.series-btn.on{border-color:var(--acc);color:var(--txt);background:#fbf2ea}
+.series-btn small{display:block;font-size:9px;font-weight:400;letter-spacing:1px;color:var(--mut);margin-top:2px;text-transform:uppercase}
+
+/* ── model trigger button ── */
+.model-trigger{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#faf8f4;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--txt);font-family:inherit;transition:.15s}
+.model-trigger:hover{border-color:var(--acc)}
+.model-trigger .mid{text-align:left}
+.model-trigger .mid-id{font-family:'Archivo';font-weight:700;font-size:16px;color:var(--txt)}
+.model-trigger .mid-name{font-size:10px;color:var(--mut);margin-top:1px}
+.model-trigger .arr{color:var(--mut);font-size:14px}
+
+/* ── size inputs ── */
+.dims{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nb{background:#faf8f4;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.nb label{font-size:10px;color:var(--mut);text-transform:uppercase;display:block;margin-bottom:2px}
+.nb input{background:none;border:none;color:var(--txt);font-family:'Archivo';font-size:15px;width:100%;outline:none}
+.meta{font-size:11px;color:var(--mut);margin-top:8px;line-height:1.6}
+
+/* ── key cards ── */
+.keygrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.keycard{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border-radius:8px;border:2px solid var(--line);background:#faf8f4;cursor:pointer;transition:.15s}
+.keycard:hover{border-color:#c9c2b5}
+.keycard.on{border-color:var(--acc);background:#fbf2ea}
+.keycard.fixed{cursor:default}
+.keycard img{width:100%;max-height:90px;object-fit:contain}
+.keycard span{font-size:10px;text-align:center;color:var(--mut);line-height:1.3}
+.keycard.on span{color:var(--txt);font-weight:600}
+
+/* ── color panel ── */
+.color-line-label{font-family:'Archivo';font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin:14px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.color-line-label:first-child{margin-top:0}
+.swgrid{display:flex;flex-direction:column;gap:4px;margin-bottom:4px}
+.sw{display:flex;align-items:center;gap:10px;border-radius:8px;cursor:pointer;border:2px solid #e2ddd4;padding:5px 8px;transition:.15s;background:#faf8f4}
+.sw:hover{border-color:#c9c2b5;background:#f5f1eb}
+.sw .sw-thumb{width:36px;height:36px;border-radius:5px;overflow:hidden;flex-shrink:0;background:#ccc}
+.sw .sw-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.sw.on{border-color:var(--acc);background:#fbf2ea;box-shadow:0 0 0 2px rgba(176,106,58,.15)}
+.sw span{font-size:11px;color:var(--mut);font-weight:500;line-height:1.3}
+.sw.on span{color:var(--txt);font-weight:600}
+
+/* ── stage ── */
+.stage-wrap{display:flex;flex-direction:column}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;min-height:70vh;position:relative;background:linear-gradient(135deg,#ffffff 0%,#f0ebe2 40%,#ddd4c4 100%)}
+#doorSvg{filter:drop-shadow(0 20px 44px rgba(60,50,40,.26));max-height:82.5vh;height:82.5vh;width:auto;position:relative;z-index:1}
+.stage-actions{display:flex;gap:10px;padding:14px 24px;border-top:1px solid var(--line);background:#fff}
+.stage-actions button{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit}
+#copyBtn{border:1px solid var(--line);background:#faf8f4;color:var(--txt)}
+#copyBtn:hover{border-color:#c9c2b5}
+#dlBtn{border:1px solid var(--acc);background:#fff;color:var(--acc)}
+#dlBtn:hover{background:#fbf2ea}
+
+/* ── popup overlay ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.popup{background:#fff;border-radius:16px;padding:24px;min-width:300px;max-width:520px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.25)}
+.popup-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.popup-head h3{font-family:'Archivo';font-weight:800;font-size:15px;color:var(--txt)}
+.popup-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--mut);line-height:1;padding:0 4px}
+.popup-close:hover{color:var(--txt)}
+
+/* ── 이미지 오버레이 (모바일 저장/공유) ── */
+.img-popup{background:#fff;border-radius:16px;padding:20px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:12px}
+.img-popup img{max-width:100%;border-radius:8px;display:block}
+.img-tip{font-size:12px;color:var(--mut);text-align:center;line-height:1.6}
+.img-dl-btn{display:block;padding:11px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;font-family:inherit;border:1px solid var(--acc);background:#fff;color:var(--acc);text-decoration:none;transition:.15s}
+.img-dl-btn:hover{background:#fbf2ea}
+
+/* model popup grid */
+.model-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.model-card{padding:12px 8px;border:2px solid var(--line);border-radius:10px;background:#faf8f4;cursor:pointer;text-align:center;transition:.15s}
+.model-card:hover{border-color:#c9c2b5;background:#f0ece6}
+.model-card.on{border-color:var(--acc);background:#fbf2ea}
+.model-card .mc-id{font-family:'Archivo';font-weight:700;font-size:18px;color:var(--txt)}
+.model-card .mc-design{font-size:9px;color:var(--mut);margin-top:3px;line-height:1.3}
+
+/* sub-toggle (판재/유리 etc) */
+.sub-toggle{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="topbar"><img class="topbar-logo" src="/logo.png" alt="logo"><h1 id="title">—</h1><span class="sub">도어시뮬레이터</span></div>
+<div class="wrap">
+
+  <!-- ── CUSTOM PANEL ── -->
+  <div class="panel">
+    <div class="panel-head">Custom</div>
+    <div class="panel-body">
+
+      <div class="sec">
+        <div class="sec-label">① 제품군</div>
+        <div class="series-grid" id="seriesT"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-label">② 모델</div>
+        <button class="model-trigger" id="modelTrigger" onclick="openPopup('model')">
+          <div class="mid">
+            <div class="mid-id" id="modelId">—</div>
+          </div>
+          <span class="arr">›</span>
+        </button>
+      </div>
+
+      <div class="sec">
+        <div class="sec-label">③ 사이즈 (mm)</div>
+        <div class="dims">
+          <div class="nb"><label>프레임 가로</label><input id="fw" type="number" value="1300"></div>
+          <div class="nb"><label>프레임 세로</label><input id="fh" type="number" value="2300"></div>
+          <div class="nb"><label>문 가로</label><input id="dw" type="number" value="950"></div>
+          <div class="nb" id="dhRow" style="display:none"><label>문 세로</label><input id="dh" type="number" value="2100"></div>
+        </div>
+        <div class="meta" id="meta"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-label">④ 사이드픽스(소대)</div>
+        <div class="toggle4" id="sideBtnRow">
+          <button class="btn" id="sideNoneBtn" onclick="setSideNone()">없음</button>
+          <button class="btn" id="sidePosL" onclick="pickSide('L')">좌소대</button>
+          <button class="btn" id="sidePosR" onclick="pickSide('R')">우소대</button>
+          <button class="btn" id="sidePos2" onclick="pickSide(2)">양소대</button>
+          <button class="btn" id="sideOpenBtn" onclick="setSideOpen()" style="display:none">소대개폐</button>
+        </div>
+        <div id="sideMatRow" class="sub-toggle" style="display:none;margin-top:6px">
+          <button class="btn" id="matPanelBtn" onclick="setSideMat('panel')">판재</button>
+          <button class="btn" id="matGlassBtn" onclick="setSideMat('glass')">유리</button>
+        </div>
+        <div id="sideGuide" style="margin-top:7px;font-size:11px;color:#888;line-height:1.4"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-label">⑤ 경첩 방향</div>
+        <div class="toggle" id="hingeT"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-label">⑥ 상부픽스(남마)</div>
+        <div class="toggle2">
+          <button class="btn" id="fixNoneBtn" onclick="setFix(false)">없음</button>
+          <button class="btn" id="fixHaveBtn" onclick="setFix(true)">있음</button>
+        </div>
+        <div id="fixMatRow" class="sub-toggle" style="display:none">
+          <button class="btn" id="fixMatPanelBtn" onclick="setFixMat('panel')">판재</button>
+          <button class="btn" id="fixMatGlassBtn" onclick="setFixMat('glass')">유리</button>
+        </div>
+      </div>
+
+      <div class="sec" id="keySec">
+        <div class="sec-label">⑦ 전자키 / 손잡이</div>
+        <div id="keyT"></div>
+        <div class="dims" id="handleRow" style="display:none;margin-top:8px">
+          <div class="nb"><label>손잡이 길이 mm</label><input id="handleMM" type="number" value="1700"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── COLOR PANEL ── -->
+  <div class="cpanel">
+    <div class="panel-head">Color</div>
+    <div class="cpanel-cols">
+      <div class="color-col">
+        <div id="swatches"></div>
+      </div>
+      <div class="color-col" id="baseColorSec" style="display:none">
+        <div class="color-line-label">베이스 색상</div>
+        <div id="baseSwatches"></div>
+      </div>
+      <div class="color-col" id="moldColorSec" style="display:none">
+        <div class="color-line-label">몰딩 색상</div>
+        <div id="moldSwatches"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STAGE ── -->
+  <div class="stage-wrap">
+    <div class="stage"><svg id="doorSvg"></svg></div>
+    <div class="stage-actions">
+      <button id="copyBtn">이미지 복사</button>
+      <button id="dlBtn">이미지 저장</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── MODEL POPUP ── -->
+<div class="overlay" id="modelOverlay" onclick="closePopupIf(event,'modelOverlay')">
+  <div class="popup">
+    <div class="popup-head">
+      <h3>모델 선택</h3>
+      <button class="popup-close" onclick="closePopup('modelOverlay')">×</button>
+    </div>
+    <div class="model-grid" id="modelPopupGrid"></div>
+  </div>
+</div>
+
+<!-- ── IMAGE OVERLAY (모바일 저장/공유) ── -->
+<div class="overlay" id="imgOverlay" onclick="closeImgOverlay()">
+  <div class="img-popup" onclick="event.stopPropagation()">
+    <div class="popup-head">
+      <h3>이미지 저장</h3>
+      <button class="popup-close" onclick="closeImgOverlay()">×</button>
+    </div>
+    <img id="imgOverlayImg" src="" alt="도어 미리보기">
+    <div class="img-tip">
+      📱 iPhone: 이미지를 <b>길게 눌러</b> → [사진에 추가]<br>
+      🤖 Android: 아래 다운로드 버튼 사용<br>
+      <span style="color:#b06a3a">사진 앱에서 카카오톡으로 공유하세요</span>
+    </div>
+    <a id="imgDlLink" href="" download="" class="img-dl-btn">다운로드 (Android)</a>
+  </div>
+</div>
+
+<!-- ── COLOR POPUP (모바일) ── -->
+<div class="overlay" id="colorOverlay" onclick="closePopupIf(event,'colorOverlay')">
+  <div class="popup">
+    <div class="popup-head">
+      <h3 id="colorPopupTitle">색상 선택</h3>
+      <button class="popup-close" onclick="closePopup('colorOverlay')">×</button>
+    </div>
+    <div id="colorPopupBody"></div>
+  </div>
+</div>
+
+
+<script src="src/engine.js"></script>
+<script src="src/svg-renderer.js"></script>
+<script>
+var DATA = {}, state = {};
+var texMap = {};
+var PAGE_LOAD_TS = Date.now();
+
+Promise.all([
+  'data/colors.json','data/models.json','data/keys.json',
+  'data/config.json','data/seriesColors.json','/api/catalog'
+].map(function(u){ return fetch(u).then(function(r){ return r.json(); }); }))
+.then(function(res){
+  DATA.colors       = res[0];
+  DATA.models       = res[1];
+  DATA.keys         = res[2];
+  DATA.config       = res[3];
+  DATA.seriesColors = res[4];
+  DATA.catalog      = res[5];
+  DATA.colors.forEach(function(c){ if(c.image) texMap[c.id] = c.image; });
+  initState(); buildAll(); render();
+});
+
+function findModel(id) {
+  return DATA.models.filter(function(x){ return x.id === id; })[0] || null;
+}
+
+function modelColors(m) {
+  if (m.colors) return m.colors;
+  var key = m.colorFolder || m.series;
+  return (DATA.seriesColors && DATA.seriesColors[key]) || [];
+}
+
+function initState() {
+  var m = DATA.models.filter(function(x){ return x.id === 'E301'; })[0] || DATA.models[0];
+  var mc = modelColors(m);
+  state = {
+    product: m.series, model: m.id,
+    colorCode: mc.length ? mc[0].code : null,
+    color: m.defaultColor,
+    glass: 'L', material: 'panel', moldColor: 'MB', baseColor: 'MB',
+    fix: false, fixMat: 'panel', hinge: 'R',
+    fw: 1300, fh: 2300, dw: 950, dh: 2100, handleMM: 1700,
+    keyId: m.keyType === 'embedded' ? 'embedded' : (m.keyOptions && m.keyOptions[0])
+  };
+}
+
+function applyModel(m) {
+  var sc = modelColors(m);
+  var codeValid = sc.some(function(x){ return x.code === state.colorCode; });
+  if (!codeValid) state.colorCode = sc.length ? sc[0].code : null;
+  state.color = m.defaultColor;
+  state.keyId = m.keyType === 'embedded' ? 'embedded' : (m.keyOptions && m.keyOptions[0]);
+}
+
+/* ── popup helpers ── */
+function openPopup(type) {
+  if (type === 'model') {
+    buildModelPopup();
+    document.getElementById('modelOverlay').classList.add('open');
+  }
+}
+function closePopup(id) {
+  document.getElementById(id).classList.remove('open');
+}
+function closePopupIf(e, id) {
+  if (e.target.id === id) closePopup(id);
+}
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') { closePopup('modelOverlay'); closePopup('colorOverlay'); closeImgOverlay(); }
+});
+
+/* ── 이미지 오버레이 (팝업 차단 시 폴백) ── */
+function closeImgOverlay() {
+  var overlay = document.getElementById('imgOverlay');
+  overlay.classList.remove('open');
+  document.getElementById('imgOverlayImg').src = '';
+  document.getElementById('imgDlLink').href = '';
+}
+function showImageOverlay(blob) {
+  var reader = new FileReader();
+  reader.onloadend = function() {
+    var dataUrl = reader.result;
+    var overlay = document.getElementById('imgOverlay');
+    document.getElementById('imgOverlayImg').src = dataUrl;
+    var dl = document.getElementById('imgDlLink');
+    dl.href = dataUrl;
+    dl.download = (state.model || 'door') + '_' + (state.colorCode || '') + '.png';
+    overlay.classList.add('open');
+  };
+  reader.readAsDataURL(blob);
+}
+
+/* ── 모바일 감지 ── */
+function isMobile() { return window.innerWidth <= 800; }
+
+/* ── 컬러 팝업 (모바일) ── */
+var _cpState = {};
+function openColorPopup(items, urlMode, title, type) {
+  _cpState = { items: items, urlMode: urlMode, type: type };
+  document.getElementById('colorPopupTitle').textContent = title;
+  buildColorPopupBody();
+  document.getElementById('colorOverlay').classList.add('open');
+}
+function buildColorPopupBody() {
+  var body = document.getElementById('colorPopupBody'); body.innerHTML = '';
+  var items = _cpState.items, urlMode = _cpState.urlMode, type = _cpState.type;
+  var selected = type === 'mold' ? state.moldColor : (type === 'base' ? state.baseColor : state.colorCode);
+  var g = document.createElement('div'); g.className = 'swgrid';
+  items.forEach(function(item){
+    var code = item.code;
+    var refUrl;
+    if (urlMode.model) {
+      var m = urlMode.model;
+      refUrl = (m.colorFolder
+        ? '/ref/color/' + encodeURIComponent(m.colorFolder) + '/' + encodeURIComponent(code) + '.jpg'
+        : '/ref/door/' + encodeURIComponent(m.series) + '/' + encodeURIComponent(code) + '.jpg')
+        + '?thumb=1';
+    } else {
+      refUrl = '/ref/color/' + encodeURIComponent(urlMode.folder) + '/' + encodeURIComponent(code) + '.jpg?thumb=1';
+    }
+    var d = document.createElement('div');
+    d.className = 'sw' + (selected === code ? ' on' : '');
+    var thumb = document.createElement('div'); thumb.className = 'sw-thumb';
+    var img = document.createElement('img'); img.src = refUrl; img.alt = item.name; img.loading = 'lazy';
+    thumb.appendChild(img); d.appendChild(thumb);
+    var sp = document.createElement('span'); sp.textContent = item.name; d.appendChild(sp);
+    d.onclick = function(){
+      if (type === 'mold') { state.moldColor = code; render(); buildMoldSwatches(); }
+      else if (type === 'base') { state.baseColor = code; render(); buildBaseSwatches(); }
+      else { state.colorCode = code; render(); buildSwatches(); }
+      closePopup('colorOverlay');
+    };
+    g.appendChild(d);
+  });
+  body.appendChild(g);
+}
+function makeColorLineBtn(title, selName, thumbUrl) {
+  var btn = document.createElement('button'); btn.className = 'color-line-btn';
+  var left = document.createElement('span'); left.textContent = title; btn.appendChild(left);
+  var right = document.createElement('span'); right.className = 'clb-right';
+  if (thumbUrl) {
+    var sw = document.createElement('div'); sw.className = 'clb-swatch';
+    var si = document.createElement('img'); si.src = thumbUrl; si.alt = selName || '';
+    sw.appendChild(si); right.appendChild(sw);
+  }
+  if (selName) { var sn = document.createElement('span'); sn.textContent = selName; right.appendChild(sn); }
+  var arr = document.createElement('span'); arr.className = 'clb-arr'; arr.textContent = '›';
+  right.appendChild(arr); btn.appendChild(right);
+  return btn;
+}
+
+/* ── model popup ── */
+function buildModelPopup() {
+  var grid = document.getElementById('modelPopupGrid');
+  grid.innerHTML = '';
+  DATA.models.filter(function(m){ return m.series === state.product; }).forEach(function(m){
+    var card = document.createElement('div');
+    card.className = 'model-card' + (state.model === m.id ? ' on' : '');
+    var num = m.id.replace(/^[A-Z]/, '');
+    card.innerHTML = '<div class="mc-id">' + num + '</div>';
+    card.onclick = function(){
+      state.model = m.id;
+      applyModel(m);
+      closePopup('modelOverlay');
+      buildAll(); render();
+    };
+    grid.appendChild(card);
+  });
+}
+
+/* ── side (소대) ── */
+function setSideNone() {
+  state.glass = 0;
+  state.sideType = 'none';
+  render(); buildSideUI();
+}
+function setSideHave() {
+  if (state.glass === 0) state.glass = 'L';
+  state.sideType = 'fix';
+  render(); buildSideUI();
+}
+function setSideOpen() {
+  // 소대개폐: 우경첩=좌소대, 좌경첩=우소대
+  state.glass = (state.hinge === 'R') ? 'L' : 'R';
+  state.sideType = 'open';
+  render(); buildSideUI();
+}
+function pickSide(val) {
+  state.glass = val;
+  state.sideType = 'fix';
+  render(); buildSideUI();
+}
+function setSideMat(v) {
+  state.material = v;
+  render(); buildSideUI();
+}
+function buildSideUI() {
+  var hasGlass = (state.glass !== 0);
+  var sideType = state.sideType || 'fix';
+  var isRoy = (state.product === '로이도어');
+  var isOpen = hasGlass && sideType === 'open';
+  if (!isRoy && isOpen) { state.sideType = 'fix'; sideType = 'fix'; isOpen = false; }
+  document.getElementById('sideBtnRow').className = isRoy ? 'toggle5' : 'toggle4';
+  var openBtn = document.getElementById('sideOpenBtn');
+  openBtn.style.display = isRoy ? '' : 'none';
+  openBtn.className = 'btn' + (isOpen ? ' on' : '');
+  document.getElementById('sideNoneBtn').className = 'btn' + (!hasGlass ? ' on' : '');
+  document.getElementById('sidePosL').className = 'btn' + (state.glass === 'L' && !isOpen ? ' on' : '');
+  document.getElementById('sidePosR').className = 'btn' + (state.glass === 'R' && !isOpen ? ' on' : '');
+  document.getElementById('sidePos2').className = 'btn' + (state.glass === 2 && !isOpen ? ' on' : '');
+  var matRow = document.getElementById('sideMatRow');
+  matRow.style.display = hasGlass ? 'grid' : 'none';
+  if (hasGlass) {
+    document.getElementById('matPanelBtn').className = 'btn' + (state.material === 'panel' ? ' on' : '');
+    document.getElementById('matGlassBtn').className = 'btn' + (state.material === 'glass' ? ' on' : '');
+  }
+  var guideEl = document.getElementById('sideGuide');
+  var isBoth = (state.glass === 2);
+  var guideText = '';
+  if (isRoy) {
+    if (!hasGlass)   guideText = 'A형 · 제작가능 W ~ 1150mm';
+    else if (isBoth) guideText = 'C형 · 제작가능 W1400 ~ 1700mm';
+    else             guideText = 'B형 · 제작가능 W1150 ~ 1400mm';
+  } else {
+    if (!hasGlass)   guideText = 'A형 · 제작가능 W1050 ~ 1200mm';
+    else if (isBoth) guideText = 'C형 · 제작가능 W1500 ~ 1800mm';
+    else             guideText = 'B형 · 제작가능 W1200 ~ 1500mm';
+  }
+  guideEl.textContent = guideText;
+}
+
+/* ── fix (남마) ── */
+function setFix(v) {
+  state.fix = v;
+  if (!v) state.fixMat = 'panel';
+  render(); buildFixUI();
+}
+function setFixMat(v) {
+  state.fixMat = v;
+  render(); buildFixUI();
+}
+function buildFixUI() {
+  document.getElementById('fixNoneBtn').className = 'btn' + (!state.fix ? ' on' : '');
+  document.getElementById('fixHaveBtn').className = 'btn' + (state.fix ? ' on' : '');
+  var row = document.getElementById('fixMatRow');
+  row.style.display = state.fix ? 'grid' : 'none';
+  document.getElementById('dhRow').style.display = state.fix ? '' : 'none';
+  if (state.fix) {
+    document.getElementById('fixMatPanelBtn').className = 'btn' + (state.fixMat === 'panel' ? ' on' : '');
+    document.getElementById('fixMatGlassBtn').className = 'btn' + (state.fixMat === 'glass' ? ' on' : '');
+  }
+}
+
+/* ── main buildAll ── */
+function buildAll() {
+  var m = findModel(state.model);
+
+  // 제품군
+  var st = document.getElementById('seriesT'); st.innerHTML = '';
+  DATA.config.series.forEach(function(s){
+    var b = document.createElement('button');
+    b.className = 'series-btn' + (state.product === s ? ' on' : '');
+    b.innerHTML = s + '<small>' + (s === '엔토브' ? 'Entove' : 'Loy Door') + '</small>';
+    b.onclick = function(){
+      state.product = s;
+      var fm = DATA.models.filter(function(x){ return x.series === s; })[0];
+      state.model = fm.id;
+      applyModel(fm);
+      buildAll(); render();
+    };
+    st.appendChild(b);
+  });
+
+  // 모델 트리거 버튼 업데이트
+  if (m) {
+    document.getElementById('modelId').textContent = m.id.replace(/^[A-Z]/, '');
+  }
+
+  // 색상
+  buildSwatches();
+  buildBaseSwatches();
+  buildMoldSwatches();
+
+  // 소대 UI
+  buildSideUI();
+
+  // 경첩
+  var ht = document.getElementById('hingeT'); ht.innerHTML = '';
+  [{v:'L',label:'좌경첩'},{v:'R',label:'우경첩'}].forEach(function(o){
+    var b = document.createElement('button');
+    b.className = 'btn' + (state.hinge === o.v ? ' on' : '');
+    b.textContent = o.label;
+    b.onclick = function(){
+      state.hinge = o.v;
+      if (state.sideType === 'open') {
+        // 소대개폐: 우경첩=좌소대, 좌경첩=우소대 자동 설정
+        state.glass = (o.v === 'R') ? 'L' : 'R';
+      }
+      render(); buildAll();
+    };
+    ht.appendChild(b);
+  });
+
+  // 남마 UI
+  buildFixUI();
+
+  // 전자키
+  buildKey();
+}
+
+/* ── color swatches ── */
+function buildSwatches() {
+  var c = document.getElementById('swatches'); c.innerHTML = '';
+  var m = findModel(state.model);
+  if (!m) return;
+  var sc = modelColors(m);
+  if (!sc || !sc.length) return;
+
+  var hasLine = sc.some(function(x){ return x.line; });
+  if (hasLine) {
+    var groups = {}, order = [];
+    sc.forEach(function(item){
+      var ln = item.line || '기타';
+      if (!groups[ln]) { groups[ln] = []; order.push(ln); }
+      groups[ln].push(item);
+    });
+    if (isMobile()) {
+      // 모바일: 라인별 버튼 → 팝업
+      order.forEach(function(ln){
+        var items = groups[ln];
+        var selItem = items.filter(function(x){ return x.code === state.colorCode; })[0];
+        var thumbUrl = selItem ? (m.colorFolder
+          ? '/ref/color/' + encodeURIComponent(m.colorFolder) + '/' + encodeURIComponent(selItem.code) + '.jpg?thumb=1'
+          : '/ref/door/' + encodeURIComponent(m.series) + '/' + encodeURIComponent(selItem.code) + '.jpg?thumb=1')
+          : null;
+        (function(items2, ln2, selItem2, thumbUrl2){
+          var btn = makeColorLineBtn(ln2 + '라인', selItem2 ? selItem2.name : null, thumbUrl2);
+          btn.onclick = function(){ openColorPopup(items2, { model: m }, ln2 + '라인', 'main'); };
+          c.appendChild(btn);
+        })(items, ln, selItem, thumbUrl);
+      });
+    } else {
+      // 데스크톱: 인라인 그룹
+      order.forEach(function(ln){
+        var lbl = document.createElement('div');
+        lbl.className = 'color-line-label';
+        lbl.textContent = ln + '라인';
+        c.appendChild(lbl);
+        c.appendChild(makeSwGrid(groups[ln], m));
+      });
+    }
+  } else {
+    c.appendChild(makeSwGrid(sc, m));
+  }
+}
+
+function makeSwGrid(items, m) {
+  var g = document.createElement('div');
+  g.className = 'swgrid';
+  items.forEach(function(item){
+    var code = item.code;
+    var refUrl = (m.colorFolder
+      ? '/ref/color/' + encodeURIComponent(m.colorFolder) + '/' + encodeURIComponent(code) + '.jpg'
+      : '/ref/door/' + encodeURIComponent(m.series) + '/' + encodeURIComponent(code) + '.jpg')
+      + '?thumb=1';
+    var d = document.createElement('div');
+    d.className = 'sw' + (state.colorCode === code ? ' on' : '');
+    var thumb = document.createElement('div');
+    thumb.className = 'sw-thumb';
+    var img = document.createElement('img');
+    img.src = refUrl; img.alt = item.name; img.loading = 'lazy';
+    thumb.appendChild(img);
+    d.appendChild(thumb);
+    var sp = document.createElement('span');
+    sp.textContent = item.name;
+    d.appendChild(sp);
+    d.onclick = function(){ state.colorCode = code; render(); buildSwatches(); };
+    g.appendChild(d);
+  });
+  return g;
+}
+
+function buildBaseSwatches() {
+  var m = findModel(state.model);
+  var sec = document.getElementById('baseColorSec');
+  if (!m || m.design !== 'threecol') { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  var c = document.getElementById('baseSwatches'); c.innerHTML = '';
+  var folder = m.colorFolder || '강판';
+  var sc = (DATA.seriesColors && DATA.seriesColors[folder]) || [];
+  if (!sc.length) return;
+  if (isMobile()) {
+    var selItem = sc.filter(function(x){ return x.code === state.baseColor; })[0];
+    var thumbUrl = selItem ? '/ref/color/' + encodeURIComponent(folder) + '/' + encodeURIComponent(selItem.code) + '.jpg?thumb=1' : null;
+    var btn = makeColorLineBtn('베이스 색상', selItem ? selItem.name : null, thumbUrl);
+    btn.onclick = function(){ openColorPopup(sc, { folder: folder }, '베이스 색상', 'base'); };
+    c.appendChild(btn);
+  } else {
+    c.appendChild(makeSwGridGeneric(sc, folder, state.baseColor, function(code){
+      state.baseColor = code; render(); buildBaseSwatches();
+    }));
+  }
+}
+
+function buildMoldSwatches() {
+  var m = findModel(state.model);
+  var sec = document.getElementById('moldColorSec');
+  if (!m || (m.design !== 'splitstrips' && m.design !== 'threecol' && m.design !== 'keystrips' && m.design !== 'moldglass')) {
+    sec.style.display = 'none'; return;
+  }
+  sec.style.display = '';
+  var c = document.getElementById('moldSwatches'); c.innerHTML = '';
+  var folder = m.colorFolder || '강판';
+  var sc = (DATA.seriesColors && DATA.seriesColors[folder]) || [];
+  if (!sc.length) return;
+  if (isMobile()) {
+    var selItem = sc.filter(function(x){ return x.code === state.moldColor; })[0];
+    var thumbUrl = selItem ? '/ref/color/' + encodeURIComponent(folder) + '/' + encodeURIComponent(selItem.code) + '.jpg?thumb=1' : null;
+    var btn = makeColorLineBtn('몰딩 색상', selItem ? selItem.name : null, thumbUrl);
+    btn.onclick = function(){ openColorPopup(sc, { folder: folder }, '몰딩 색상', 'mold'); };
+    c.appendChild(btn);
+  } else {
+    c.appendChild(makeSwGridGeneric(sc, folder, state.moldColor, function(code){
+      state.moldColor = code; render(); buildMoldSwatches();
+    }));
+  }
+}
+
+function makeSwGridGeneric(sc, folder, selected, onPick) {
+  var g = document.createElement('div');
+  g.className = 'swgrid';
+  sc.forEach(function(item){
+    var code = item.code;
+    var refUrl = '/ref/color/' + encodeURIComponent(folder) + '/' + encodeURIComponent(code) + '.jpg?thumb=1';
+    var d = document.createElement('div');
+    d.className = 'sw' + (selected === code ? ' on' : '');
+    var thumb = document.createElement('div');
+    thumb.className = 'sw-thumb';
+    var img = document.createElement('img');
+    img.src = refUrl; img.alt = item.name; img.loading = 'lazy';
+    thumb.appendChild(img);
+    d.appendChild(thumb);
+    var sp = document.createElement('span');
+    sp.textContent = item.name;
+    d.appendChild(sp);
+    d.onclick = function(){ onPick(code); };
+    g.appendChild(d);
+  });
+  return g;
+}
+
+function buildKey() {
+  var m = findModel(state.model);
+  if (!m) return;
+  var kt = document.getElementById('keyT'); kt.innerHTML = '';
+  var isEmbedded = (m.keyType === 'embedded');
+  var keyIds = isEmbedded ? ['embedded'] : (m.keyOptions || []);
+  document.getElementById('handleRow').style.display = isEmbedded ? 'grid' : 'none';
+
+  var grid = document.createElement('div');
+  grid.className = 'keygrid';
+  keyIds.forEach(function(kid){
+    var kdata = (DATA.keys || []).filter(function(x){ return x.id === kid; })[0];
+    if (!kdata) return;
+    var card = document.createElement('div');
+    card.className = 'keycard' + (isEmbedded ? ' fixed' : '') + (state.keyId === kid ? ' on' : '');
+    var img = document.createElement('img');
+    img.src = kdata.image; img.alt = kdata.name; img.loading = 'lazy';
+    var sp = document.createElement('span'); sp.textContent = kdata.name;
+    card.appendChild(img); card.appendChild(sp);
+    if (!isEmbedded) card.onclick = function(){ state.keyId = kid; render(); buildKey(); };
+    grid.appendChild(card);
+  });
+  kt.appendChild(grid);
+}
+
+function render() {
+  var m = findModel(state.model);
+  document.getElementById('title').textContent =
+    (m ? m.series + ' ' : '') + state.model.replace(/^[A-Z]/, '');
+  var result = DoorEngine.build(state, DATA);
+  DoorSvgRenderer.render(document.getElementById('doorSvg'), result, {textureMap: texMap, cacheBust: PAGE_LOAD_TS});
+  var me = result.meta;
+  document.getElementById('meta').innerHTML =
+    '문 ' + me.doorW + '×' + me.doorH + 'mm'
+    + (me.nSide > 0 ? ' · 소대 ' + me.nSide + '개×' + me.sideW + 'mm' : '')
+    + (me.fixMM ? ' · 남마 ' + me.fixMM + 'mm' : '');
+}
+
+var renderTimer = null;
+['fw','fh','dw','dh','handleMM'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', function(e){
+    state[id] = parseInt(e.target.value) || 0;
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(render, 120);
+  });
+});
+
+function fetchPng(callback) {
+  fetch('/api/png', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(state)
+  }).then(function(r){
+    if (!r.ok) throw new Error('Server error ' + r.status);
+    return r.blob();
+  }).then(callback).catch(function(e){ callback(null, e); });
+}
+
+document.getElementById('copyBtn').onclick = function(){
+  var btn = this;
+  if (isMobile()) {
+    btn.textContent = '처리 중…'; btn.disabled = true;
+    fetchPng(function(blob, err){
+      btn.disabled = false; btn.textContent = '이미지 복사';
+      if (blob) showImageOverlay(blob);
+    });
+    return;
+  }
+  btn.textContent = '처리 중…'; btn.disabled = true;
+  fetchPng(function(blob, err){
+    btn.disabled = false;
+    if (!blob) { btn.textContent = '실패'; setTimeout(function(){ btn.textContent = '이미지 복사'; }, 1500); return; }
+    navigator.clipboard.write([new ClipboardItem({'image/png': blob})])
+      .then(function(){ btn.textContent = '복사됨 ✓'; setTimeout(function(){ btn.textContent = '이미지 복사'; }, 1500); })
+      .catch(function(){ btn.textContent = '복사 실패'; setTimeout(function(){ btn.textContent = '이미지 복사'; }, 1500); });
+  });
+};
+
+document.getElementById('dlBtn').onclick = function(){
+  var btn = this;
+  if (isMobile()) {
+    btn.textContent = '처리 중…'; btn.disabled = true;
+    fetchPng(function(blob, err){
+      btn.disabled = false; btn.textContent = '이미지 저장';
+      if (blob) showImageOverlay(blob);
+    });
+    return;
+  }
+  btn.textContent = '처리 중…'; btn.disabled = true;
+  fetchPng(function(blob, err){
+    btn.disabled = false;
+    if (!blob) { btn.textContent = '실패'; setTimeout(function(){ btn.textContent = '이미지 저장'; }, 1500); return; }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = state.model + '_' + (state.colorCode || '') + '.png';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); btn.textContent = '이미지 저장'; }, 1500);
+  });
+};
+</script>
+</body>
+</html>
