@@ -98,6 +98,7 @@
             preserveAspectRatio: s.preserveAspect || 'xMidYMid slice',
             'clip-path': 'url(#' + clipId + ')'
           });
+          if (s.brightness) im.style.filter = 'brightness(' + s.brightness + ')';
           im.setAttributeNS(XLINK, 'href', bsrc);
           im.setAttribute('href', bsrc);
           svg.appendChild(im);
