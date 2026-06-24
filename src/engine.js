@@ -153,7 +153,7 @@
         // 넓은 도어(너비 기준 스케일)와 좁은 소대(높이 기준 스케일)의
         // 스케일 기준이 달라 이미지 상단 검은 바 위치가 달라지는 문제 방지
         shapes.push({ t:'photo', x:xmm*sc, y:0, w:wmm*sc, h:fh*sc,
-                      clipY:ymm*sc, clipH:hmm*sc, src:photoSrc, brightness:2.0 });
+                      clipY:ymm*sc, clipH:hmm*sc, src:photoSrc });
       } else {
         R(xmm, ymm, wmm, hmm, '#5a4a3a');
       }
