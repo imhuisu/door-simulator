@@ -159,10 +159,10 @@
       }
       // 프레임/판재 접합부 소프트 엣지 (4면)
       var ex = xmm*sc, ey = ymm*sc, ew = wmm*sc, eh = hmm*sc, ef = 10;
-      shapes.push({ t:'gradRect', x:ex,       y:ey,       w:ew, h:ef, fill:'#000000', opacity1:0.30, opacity2:0 });
-      shapes.push({ t:'gradRect', x:ex,       y:ey+eh-ef, w:ew, h:ef, fill:'#000000', opacity1:0,    opacity2:0.30 });
-      shapes.push({ t:'gradRect', x:ex,       y:ey,       w:ef, h:eh, fill:'#000000', opacity1:0.30, opacity2:0,    horiz:true });
-      shapes.push({ t:'gradRect', x:ex+ew-ef, y:ey,       w:ef, h:eh, fill:'#000000', opacity1:0,    opacity2:0.30, horiz:true });
+      shapes.push({ t:'gradRect', x:ex,       y:ey,       w:ew, h:ef, fill:'#000000', opacity1:0.15, opacity2:0 });
+      shapes.push({ t:'gradRect', x:ex,       y:ey+eh-ef, w:ew, h:ef, fill:'#000000', opacity1:0,    opacity2:0.15 });
+      shapes.push({ t:'gradRect', x:ex,       y:ey,       w:ef, h:eh, fill:'#000000', opacity1:0.15, opacity2:0,    horiz:true });
+      shapes.push({ t:'gradRect', x:ex+ew-ef, y:ey,       w:ef, h:eh, fill:'#000000', opacity1:0,    opacity2:0.15, horiz:true });
       // 얇은 외곽선
       R(xmm, ymm, wmm, hmm, 'none', '#000000', 0.5);
     }
@@ -171,9 +171,9 @@
     function addPinLight(xmm, ymm, wmm, hmm) {
       var px = xmm*sc, py = ymm*sc, pw = wmm*sc, ph = hmm*sc;
       shapes.push({ t:'spotlight', x:px, y:py, w:pw, h:ph,
-                    cx:0.5, cy:0.10, r:0.90, midStop:0.52, brightOp:0.10, darkOp:0.08 });
+                    cx:0.5, cy:0.10, r:0.90, midStop:0.52, brightOp:0.05, darkOp:0.04 });
       shapes.push({ t:'gradRect', x:px, y:py + ph*0.55, w:pw, h:ph*0.45,
-                    fill:'#000000', opacity1:0, opacity2:0.13 });
+                    fill:'#000000', opacity1:0, opacity2:0.06 });
     }
 
     // 소대 렌더:
