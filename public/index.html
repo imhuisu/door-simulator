@@ -799,17 +799,42 @@ function buildKey() {
   kt.appendChild(grid);
 }
 
+var _renderGen = 0;
 function render() {
+  var gen = ++_renderGen;
   var m = findModel(state.model);
   document.getElementById('title').textContent =
     (m ? m.series + ' ' : '') + state.model.replace(/^[A-Z]/, '');
   var result = DoorEngine.build(state, DATA);
-  DoorSvgRenderer.render(document.getElementById('doorSvg'), result, {textureMap: texMap, cacheBust: PAGE_LOAD_TS});
-  var me = result.meta;
-  document.getElementById('meta').innerHTML =
-    '문 ' + me.doorW + '×' + me.doorH + 'mm'
-    + (me.nSide > 0 ? ' · 소대 ' + me.nSide + '개×' + me.sideW + 'mm' : '')
-    + (me.fixMM ? ' · 남마 ' + me.fixMM + 'mm' : '');
+
+  var srcs = [];
+  result.shapes.forEach(function(s) {
+    if ((s.t === 'photo' || s.t === 'photoTile') && s.src) {
+      var url = s.src + (s.src.indexOf('?') >= 0 ? '&' : '?') + 't=' + PAGE_LOAD_TS;
+      if (srcs.indexOf(url) < 0) srcs.push(url);
+    }
+  });
+
+  function doRender() {
+    if (gen !== _renderGen) return;
+    DoorSvgRenderer.render(document.getElementById('doorSvg'), result, {textureMap: texMap, cacheBust: PAGE_LOAD_TS});
+    var me = result.meta;
+    document.getElementById('meta').innerHTML =
+      '문 ' + me.doorW + '×' + me.doorH + 'mm'
+      + (me.nSide > 0 ? ' · 소대 ' + me.nSide + '개×' + me.sideW + 'mm' : '')
+      + (me.fixMM ? ' · 남마 ' + me.fixMM + 'mm' : '');
+  }
+
+  if (srcs.length === 0) { doRender(); return; }
+
+  var loaded = 0;
+  srcs.forEach(function(url) {
+    var img = new Image();
+    img.onload = img.onerror = function() {
+      if (++loaded === srcs.length) doRender();
+    };
+    img.src = url;
+  });
 }
 
 var renderTimer = null;
