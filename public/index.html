@@ -324,7 +324,7 @@ body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans KR',sans-s
 
 
 <script src="src/engine.js"></script>
-<script src="src/svg-renderer.js"></script>
+<script src="src/svg-renderer.js?v=4"></script>
 <script>
 var DATA = {}, state = {};
 var texMap = {};
@@ -840,14 +840,16 @@ function render() {
       var cvs = document.createElement('canvas');
       cvs.width  = Math.max(1, Math.round(cw_ * dpr));
       cvs.height = Math.max(1, Math.round(ch_ * dpr));
+      var ctx2d = cvs.getContext('2d');
+      ctx2d.imageSmoothingEnabled = true;
+      if (ctx2d.imageSmoothingQuality !== undefined) ctx2d.imageSmoothingQuality = 'high';
       try {
-        cvs.getContext('2d').drawImage(img,
-          (cx_ - dx) / scl, (cy_ - dy) / scl, srcW, srcH,
-          0, 0, cvs.width, cvs.height);
-        s.blobSrc = cvs.toDataURL('image/jpeg', 0.95);
+        ctx2d.drawImage(img, (cx_ - dx) / scl, (cy_ - dy) / scl, srcW, srcH,
+                        0, 0, cvs.width, cvs.height);
+        s.blobSrc = cvs.toDataURL('image/png');  // lossless: no JPEG artifacts
         s.x = cx_; s.y = cy_; s.w = cw_; s.h = ch_;
         s.preserveAspect = 'none';
-      } catch(e) {}
+      } catch(e) { console.warn('[canvas draw]', e); }
     });
     DoorSvgRenderer.render(document.getElementById('doorSvg'), result, {textureMap: texMap, cacheBust: PAGE_LOAD_TS});
     var me = result.meta;
@@ -855,6 +857,25 @@ function render() {
       '문 ' + me.doorW + '×' + me.doorH + 'mm'
       + (me.nSide > 0 ? ' · 소대 ' + me.nSide + '개×' + me.sideW + 'mm' : '')
       + (me.fixMM ? ' · 남마 ' + me.fixMM + 'mm' : '');
+    // Fallback: if canvas failed, any remaining HTTP-URL <image> gets a repaint after decode
+    var svgEl = document.getElementById('doorSvg');
+    var httpImgs = Array.prototype.filter.call(svgEl.querySelectorAll('image'), function(si) {
+      var h = si.getAttribute('href') || '';
+      return h && h.indexOf('data:') !== 0 && h.indexOf('blob:') !== 0;
+    });
+    if (httpImgs.length) {
+      var rp = httpImgs.length;
+      httpImgs.forEach(function(si) {
+        si.addEventListener('load', function f() {
+          si.removeEventListener('load', f);
+          if (--rp === 0 && gen === _renderGen) {
+            svgEl.style.display = 'none';
+            void svgEl.getBoundingClientRect();
+            svgEl.style.display = '';
+          }
+        });
+      });
+    }
   }
 
   if (srcs.length === 0) { doRender(); return; }
