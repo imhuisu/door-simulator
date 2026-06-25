@@ -77,7 +77,7 @@
         var ch = s.clipH != null ? s.clipH : s.h;
         cp.appendChild(el('rect', { x: cx_clip, y: cy, width: cw_clip, height: ch }));
         svg.querySelector('defs').appendChild(cp);
-        var bsrc = bust(s.src, cb);
+        var bsrc = s.blobSrc || bust(s.src, cb);
         if (s.rotate === 90) {
           var cxR = s.x + s.w / 2;
           var cyR = cy + ch / 2;
@@ -138,7 +138,7 @@
         var tcp = el('clipPath', { id: tcid });
         tcp.appendChild(el('rect', { x: s.x, y: s.y, width: s.w, height: s.h }));
         svg.querySelector('defs').appendChild(tcp);
-        var btsrc = bust(s.src, cb);
+        var btsrc = s.blobSrc || bust(s.src, cb);
         var numTiles = Math.ceil(s.w / s.tileW) + 1;
         for (var ti = 0; ti < numTiles; ti++) {
           var tim = el('image', {
