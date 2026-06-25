@@ -800,8 +800,7 @@ function buildKey() {
 }
 
 var _renderGen = 0;
-var _blobCache = {};  // url -> blob URL (set only after full decode)
-var _imgCache  = {};  // url -> HTMLImageElement (kept alive to hold decoded pixels in browser cache)
+var _imgCache  = {};  // url -> HTMLImageElement (fully decoded, kept alive)
 
 function render() {
   var gen = ++_renderGen;
@@ -820,11 +819,35 @@ function render() {
 
   function doRender() {
     if (gen !== _renderGen) return;
+    var dpr = window.devicePixelRatio || 1;
     result.shapes.forEach(function(s) {
-      if ((s.t === 'photo' || s.t === 'photoTile') && s.src) {
-        var url = s.src + (s.src.indexOf('?') >= 0 ? '&' : '?') + 't=' + PAGE_LOAD_TS;
-        if (_blobCache[url]) s.blobSrc = _blobCache[url];
-      }
+      if ((s.t !== 'photo' && s.t !== 'photoTile') || !s.src) return;
+      var url = s.src + (s.src.indexOf('?') >= 0 ? '&' : '?') + 't=' + PAGE_LOAD_TS;
+      var img = _imgCache[url];
+      if (!img || !img.naturalWidth || s.t === 'photoTile' || s.rotate) return;
+      // Pre-render to canvas → synchronous inline data URL, no async SVG decode
+      var cx_ = s.clipX != null ? s.clipX : s.x;
+      var cw_ = s.clipW != null ? s.clipW : s.w;
+      var cy_ = s.clipY != null ? s.clipY : s.y;
+      var ch_ = s.clipH != null ? s.clipH : s.h;
+      if (cw_ <= 0 || ch_ <= 0 || s.w <= 0 || s.h <= 0) return;
+      var iW = img.naturalWidth, iH = img.naturalHeight;
+      var scl = Math.max(s.w / iW, s.h / iH);
+      var dx = s.x + (s.w - iW * scl) / 2;
+      var dy = s.y + (s.h - iH * scl) / 2;
+      var srcW = cw_ / scl, srcH = ch_ / scl;
+      if (srcW <= 0 || srcH <= 0) return;
+      var cvs = document.createElement('canvas');
+      cvs.width  = Math.max(1, Math.round(cw_ * dpr));
+      cvs.height = Math.max(1, Math.round(ch_ * dpr));
+      try {
+        cvs.getContext('2d').drawImage(img,
+          (cx_ - dx) / scl, (cy_ - dy) / scl, srcW, srcH,
+          0, 0, cvs.width, cvs.height);
+        s.blobSrc = cvs.toDataURL('image/jpeg', 0.95);
+        s.x = cx_; s.y = cy_; s.w = cw_; s.h = ch_;
+        s.preserveAspect = 'none';
+      } catch(e) {}
     });
     DoorSvgRenderer.render(document.getElementById('doorSvg'), result, {textureMap: texMap, cacheBust: PAGE_LOAD_TS});
     var me = result.meta;
@@ -838,29 +861,17 @@ function render() {
 
   var pending = 0;
   srcs.forEach(function(url) {
-    if (_blobCache[url]) return;
+    if (_imgCache[url]) return;
     pending++;
-    fetch(url)
-      .then(function(r) { return r.blob(); })
-      .then(function(blob) {
-        var blobUrl = URL.createObjectURL(blob);
-        var img = new Image();
-        _imgCache[url] = img;  // keep <img> alive so decoded pixels stay in browser cache
-        img.src = blobUrl;
-        function done() {
-          _blobCache[url] = blobUrl;
-          if (--pending === 0) doRender();
-        }
-        if (typeof img.decode === 'function') {
-          img.decode().then(done, done);
-        } else {
-          img.onload = img.onerror = done;
-        }
-      })
-      .catch(function() {
-        _blobCache[url] = url;
-        if (--pending === 0) doRender();
-      });
+    var img = new Image();
+    _imgCache[url] = img;
+    img.src = url;
+    function done() { if (--pending === 0) doRender(); }
+    if (typeof img.decode === 'function') {
+      img.decode().then(done, done);
+    } else {
+      img.onload = img.onerror = done;
+    }
   });
   if (pending === 0) doRender();
 }
