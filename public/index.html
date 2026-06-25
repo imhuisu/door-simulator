@@ -828,15 +828,14 @@ function render() {
   if (srcs.length === 0) { doRender(); return; }
 
   var loaded = 0;
-  function oneDone() { if (++loaded === srcs.length) doRender(); }
+  var imgs = [];
   srcs.forEach(function(url) {
     var img = new Image();
+    imgs.push(img);
+    img.onload = img.onerror = function() {
+      if (++loaded === srcs.length) doRender();
+    };
     img.src = url;
-    if (img.decode) {
-      img.decode().then(oneDone).catch(oneDone);
-    } else {
-      img.onload = img.onerror = oneDone;
-    }
   });
 }
 
