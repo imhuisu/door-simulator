@@ -130,7 +130,7 @@
         svg.appendChild(el('rect', { x: s.x, y: s.y, width: s.w, height: s.h, fill: 'url(#' + gid + ')' }));
       } else if (s.t === 'image') {
         var bhref = bust(s.href, cb);
-        var im2 = el('image', { x: s.x, y: s.y, width: s.w, height: s.h, preserveAspectRatio: 'none' });
+        var im2 = el('image', { x: s.x, y: s.y, width: s.w, height: s.h, preserveAspectRatio: s.preserveAspect || 'none' });
         im2.setAttributeNS(XLINK, 'href', bhref); im2.setAttribute('href', bhref);
         svg.appendChild(im2);
       } else if (s.t === 'photoTile') {

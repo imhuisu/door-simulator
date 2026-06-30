@@ -70,7 +70,11 @@ function renderSVG(result, opts) {
       parts.push('<defs><radialGradient id="' + sid + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fx="' + cx + '" fy="' + cy + '" gradientUnits="objectBoundingBox"><stop offset="0" stop-color="#ffffff" stop-opacity="' + bOp + '"/><stop offset="' + mid + '" stop-color="#ffffff" stop-opacity="0.01"/><stop offset="1" stop-color="#000000" stop-opacity="' + dOp + '"/></radialGradient></defs>');
       parts.push('<rect x="' + s.x + '" y="' + s.y + '" width="' + s.w + '" height="' + s.h + '" fill="url(#' + sid + ')"/>');
     }
-    else if (s.t === 'image') parts.push('<image x="' + s.x + '" y="' + s.y + '" width="' + s.w + '" height="' + s.h + '" preserveAspectRatio="none" xlink:href="' + s.href + '"/>');
+    else if (s.t === 'image') {
+      var imgPa = s.preserveAspect || 'none';
+      var imgSrc = photoMap[s.href] || s.href;
+      parts.push('<image x="' + s.x + '" y="' + s.y + '" width="' + s.w + '" height="' + s.h + '" preserveAspectRatio="' + imgPa + '" xlink:href="' + imgSrc + '" href="' + imgSrc + '"/>');
+    }
     else if (s.t === 'path') parts.push('<path d="' + s.d + '" fill="' + (s.fill || 'none') + '" stroke="' + (s.stroke || '#000000') + '" stroke-width="' + (s.sw || 1) + '" stroke-linecap="round" stroke-linejoin="round" opacity="' + (s.opacity == null ? 1 : s.opacity) + '"/>');
     else if (s.t === 'photoTile') {
       var tcid = 'tileClip' + (clipSeq++);
@@ -86,7 +90,7 @@ function renderSVG(result, opts) {
     var textAreaH = totalH - H;
     parts.push('<rect x="0" y="' + H + '" width="' + W + '" height="' + textAreaH + '" fill="#f5f3f0"/>');
     disclaimers.forEach(function(txt, i) {
-      parts.push('<text x="6" y="' + (H + 14 + i * 14) + '" font-size="9.5" fill="#555555" font-family="sans-serif">' + txt + '</text>');
+      parts.push('<text x="6" y="' + (H + 14 + i * 14) + '" font-size="9.5" fill="#555555" font-family="\'Malgun Gothic\', \'Noto Sans CJK KR\', \'Noto Sans KR\', \'Apple SD Gothic Neo\', sans-serif">' + txt + '</text>');
     });
   }
   parts.push('</svg>');

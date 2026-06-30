@@ -1064,8 +1064,9 @@
       var imgH = (gtGH + gtFW * 2) * 1.8;
       var imgX = dc - imgW / 2;
       var imgY = glY - gtFW;
-      shapes.push({ t:'photo', x:imgX*sc, y:imgY*sc, w:imgW*sc, h:imgH*sc,
-        src:'/ref/color/%EA%B8%B0%ED%83%80/122.png' });
+      shapes.push({ t:'image', x:imgX*sc, y:imgY*sc, w:imgW*sc, h:imgH*sc,
+        href:'/ref/color/%EA%B8%B0%ED%83%80/122.png',
+        preserveAspect:'xMidYMid meet' });
     }
 
     // ── hplanks: 가로 플랭크 줄눈 (L123, L128) ──

@@ -176,6 +176,11 @@ const server = http.createServer((req, res) => {
         const abs = path.normalize(path.join(REF_DIR, ...rel));
         if (!abs.startsWith(path.normalize(REF_DIR))) return null;
         const raw = fs.readFileSync(abs);
+        const isPng = abs.toLowerCase().endsWith('.png');
+        if (isPng) {
+          const resized = await sharp(raw).resize(600, 600, { fit: 'inside' }).png().toBuffer();
+          return 'data:image/png;base64,' + resized.toString('base64');
+        }
         const resized = await sharp(raw).resize(600, 600, { fit: 'inside' }).jpeg({ quality: 85 }).toBuffer();
         return 'data:image/jpeg;base64,' + resized.toString('base64');
       } catch(e) { return null; }
@@ -185,6 +190,7 @@ const server = http.createServer((req, res) => {
     srcs.add(GLASS_KEY);
     result.shapes.forEach(s => {
       if ((s.t === 'photo' || s.t === 'photoTile') && s.src) srcs.add(s.src);
+      if (s.t === 'image' && s.href && s.href.startsWith('/ref/')) srcs.add(s.href);
     });
     const photoMap = {};
     await Promise.all([...srcs].map(async src => {
