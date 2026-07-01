@@ -736,7 +736,12 @@ function buildMoldSwatches() {
   sec.style.display = '';
   var c = document.getElementById('moldSwatches'); c.innerHTML = '';
   var folder = m.colorFolder || '강판';
-  var sc = (DATA.seriesColors && DATA.seriesColors[folder]) || [];
+  var sc = ((DATA.seriesColors && DATA.seriesColors[folder]) || []).slice();
+  if (m.moldColors && m.moldColors.length) {
+    m.moldColors.forEach(function(x){
+      if (!sc.some(function(y){ return y.code === x.code; })) sc.push(x);
+    });
+  }
   if (!sc.length) return;
   if (isMobile()) {
     var selItem = sc.filter(function(x){ return x.code === state.moldColor; })[0];

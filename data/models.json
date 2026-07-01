@@ -126,7 +126,8 @@
   "defaultColor": "ebony-wood",
   "keyType": "select",
   "colorFolder": "강판",
-  "keyOptions": ["게이트아이", "하이원골드"]
+  "keyOptions": ["게이트아이", "하이원골드"],
+  "moldColors": [{"code": "DS", "name": "다크서스"}]
  },
  {
   "id": "L115",
