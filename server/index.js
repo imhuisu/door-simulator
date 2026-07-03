@@ -89,7 +89,20 @@ function parseState(q) {
   };
 }
 
+// 예기치 못한 예외로 서버 프로세스 전체가 죽는 것을 방지 (Railway 자동 재시작 유발)
+process.on('uncaughtException', (e) => { console.error('uncaughtException:', e); });
+process.on('unhandledRejection', (e) => { console.error('unhandledRejection:', e); });
+
 const server = http.createServer((req, res) => {
+  try {
+    return handleRequest(req, res);
+  } catch (e) {
+    console.error('Request handler error:', e);
+    if (!res.headersSent) { res.writeHead(500); res.end('Internal error'); }
+  }
+});
+
+function handleRequest(req, res) {
   const u = url.parse(req.url, true);
 
   // Custom/ 이미지 서빙
@@ -213,7 +226,7 @@ const server = http.createServer((req, res) => {
         const buf = await generatePng(state);
         res.writeHead(200, {
           'Content-Type': 'image/png',
-          'Content-Disposition': 'inline; filename="' + filename + '"',
+          'Content-Disposition': "inline; filename=\"door.png\"; filename*=UTF-8''" + encodeURIComponent(filename),
           'Cache-Control': 'no-store',
           'Access-Control-Allow-Origin': '*'
         });
@@ -228,6 +241,7 @@ const server = http.createServer((req, res) => {
   // PNG API: POST /api/png (body = JSON state) — 데스크탑 클립보드/저장용
   if (u.pathname === '/api/png' && req.method === 'POST') {
     let body = '';
+    req.on('error', () => {});
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
       try {
@@ -266,7 +280,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(abs)] || 'application/octet-stream' });
     res.end(buf);
   });
-});
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log('Door configurator → http://localhost:' + PORT));
