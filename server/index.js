@@ -277,7 +277,10 @@ function handleRequest(req, res) {
 
   fs.readFile(abs, (err, buf) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(abs)] || 'application/octet-stream' });
+    var headers = { 'Content-Type': MIME[path.extname(abs)] || 'application/octet-stream' };
+    // 엔진/데이터 파일은 배포 직후 브라우저가 옛 버전을 계속 쓰는 것을 방지
+    if (fp.startsWith('/data/') || fp.startsWith('/src/')) headers['Cache-Control'] = 'no-cache';
+    res.writeHead(200, headers);
     res.end(buf);
   });
 }
