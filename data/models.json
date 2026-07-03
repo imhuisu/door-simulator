@@ -31,6 +31,7 @@
   "design": "vplank",
   "defaultColor": "피치파인(303)",
   "colorFolder": "목재",
+  "panelAlign": "left",
   "colors": [
     {"code": "피치파인(303)", "name": "피치파인(303)"},
     {"code": "마호가니(303)", "name": "마호가니(303)"}

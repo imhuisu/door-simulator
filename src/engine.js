@@ -152,8 +152,12 @@
         // 이미지를 y=0 전체 높이로 배치하고 패널 영역만 클리핑:
         // 넓은 도어(너비 기준 스케일)와 좁은 소대(높이 기준 스케일)의
         // 스케일 기준이 달라 이미지 상단 검은 바 위치가 달라지는 문제 방지
-        shapes.push({ t:'photo', x:xmm*sc, y:0, w:wmm*sc, h:fh*sc,
-                      clipY:ymm*sc, clipH:hmm*sc, src:photoSrc });
+        var panelShape = { t:'photo', x:xmm*sc, y:0, w:wmm*sc, h:fh*sc,
+                      clipY:ymm*sc, clipH:hmm*sc, src:photoSrc };
+        // 좁은 소대는 세로(높이) 기준으로 확대되어 중앙 슬라이스만 보이는데,
+        // 무늬가 좌측 넓은 목재부터 시작하는 소재(E303 등)는 좌측 정렬로 그 무늬가 보이게 함
+        if (M.panelAlign === 'left') panelShape.preserveAspect = 'xMinYMid slice';
+        shapes.push(panelShape);
       } else {
         R(xmm, ymm, wmm, hmm, '#5a4a3a');
       }
@@ -435,6 +439,7 @@
       width: VW, height: VH, shapes: shapes,
       meta: {
         doorW: Math.round(doorWmm), doorH: Math.round(doorH),
+        frameW: Math.round(fw), frameH: Math.round(fh),
         sideW: Math.round(Math.max(H.sideLeftW, H.sideRightW)),
         nSide: (H.sideLeftW > 0 ? 1 : 0) + (H.sideRightW > 0 ? 1 : 0),
         fixMM: Math.round(fixH)
