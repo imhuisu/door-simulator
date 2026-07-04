@@ -839,7 +839,8 @@ function render() {
       if (cw_ <= 0 || ch_ <= 0 || s.w <= 0 || s.h <= 0) return;
       var iW = img.naturalWidth, iH = img.naturalHeight;
       var scl = Math.max(s.w / iW, s.h / iH);
-      var dx = s.x + (s.w - iW * scl) / 2;
+      var alignLeft = s.preserveAspect === 'xMinYMid slice';
+      var dx = alignLeft ? s.x : s.x + (s.w - iW * scl) / 2;
       var dy = s.y + (s.h - iH * scl) / 2;
       var srcW = cw_ / scl, srcH = ch_ / scl;
       if (srcW <= 0 || srcH <= 0) return;

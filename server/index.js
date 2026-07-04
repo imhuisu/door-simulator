@@ -277,9 +277,8 @@ function handleRequest(req, res) {
 
   fs.readFile(abs, (err, buf) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
-    var headers = { 'Content-Type': MIME[path.extname(abs)] || 'application/octet-stream' };
-    // 엔진/데이터 파일은 배포 직후 브라우저가 옛 버전을 계속 쓰는 것을 방지
-    if (fp.startsWith('/data/') || fp.startsWith('/src/')) headers['Cache-Control'] = 'no-cache';
+    // 배포 직후 브라우저가 옛 버전(HTML/JS/데이터)을 계속 쓰는 것을 방지
+    var headers = { 'Content-Type': MIME[path.extname(abs)] || 'application/octet-stream', 'Cache-Control': 'no-cache' };
     res.writeHead(200, headers);
     res.end(buf);
   });
