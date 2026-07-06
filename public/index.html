@@ -851,11 +851,13 @@ function render() {
       ctx2d.imageSmoothingEnabled = true;
       if (ctx2d.imageSmoothingQuality !== undefined) ctx2d.imageSmoothingQuality = 'high';
       try {
+        if (s.flipX) { ctx2d.translate(cvs.width, 0); ctx2d.scale(-1, 1); }
         ctx2d.drawImage(img, (cx_ - dx) / scl, (cy_ - dy) / scl, srcW, srcH,
                         0, 0, cvs.width, cvs.height);
         s.blobSrc = cvs.toDataURL('image/png');  // lossless: no JPEG artifacts
         s.x = cx_; s.y = cy_; s.w = cw_; s.h = ch_;
         s.preserveAspect = 'none';
+        s.flipX = false;  // 반전은 캔버스에 이미 구워짐 - SVG 레이어에서 다시 반전하면 안 됨
       } catch(e) { console.warn('[canvas draw]', e); }
     });
     DoorSvgRenderer.render(document.getElementById('doorSvg'), result, {textureMap: texMap, cacheBust: PAGE_LOAD_TS});

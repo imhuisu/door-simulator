@@ -92,6 +92,17 @@
           im.setAttribute('href', bsrc);
           g90.appendChild(im);
           svg.appendChild(g90);
+        } else if (s.flipX) {
+          var gFlip = el('g', { 'clip-path': 'url(#' + clipId + ')',
+            transform: 'translate(' + (2 * s.x + s.w) + ',0) scale(-1,1)' });
+          var imFl = el('image', {
+            x: s.x, y: s.y, width: s.w, height: s.h,
+            preserveAspectRatio: s.preserveAspect || 'xMidYMid slice'
+          });
+          imFl.setAttributeNS(XLINK, 'href', bsrc);
+          imFl.setAttribute('href', bsrc);
+          gFlip.appendChild(imFl);
+          svg.appendChild(gFlip);
         } else {
           var im = el('image', {
             x: s.x, y: s.y, width: s.w, height: s.h,

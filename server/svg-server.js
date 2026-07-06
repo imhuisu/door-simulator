@@ -45,6 +45,10 @@ function renderSVG(result, opts) {
         var cxR = s.x + s.w / 2;
         var cyR = cy + ch / 2;
         parts.push('<g clip-path="url(#' + clipId + ')"><image x="' + (cxR - ch/2) + '" y="' + (cyR - s.w/2) + '" width="' + ch + '" height="' + s.w + '" preserveAspectRatio="xMidYMid slice" transform="rotate(90,' + cxR + ',' + cyR + ')" xlink:href="' + photoSrc + '" href="' + photoSrc + '"/></g>');
+      } else if (s.flipX) {
+        var pa2 = s.preserveAspect || 'xMidYMid slice';
+        var flipTr = 'translate(' + (2 * s.x + s.w) + ',0) scale(-1,1)';
+        parts.push('<g clip-path="url(#' + clipId + ')" transform="' + flipTr + '"><image x="' + s.x + '" y="' + s.y + '" width="' + s.w + '" height="' + s.h + '" preserveAspectRatio="' + pa2 + '" xlink:href="' + photoSrc + '" href="' + photoSrc + '"/></g>');
       } else {
         var pa = s.preserveAspect || 'xMidYMid slice';
         parts.push('<image x="' + s.x + '" y="' + s.y + '" width="' + s.w + '" height="' + s.h + '" preserveAspectRatio="' + pa + '" clip-path="url(#' + clipId + ')" xlink:href="' + photoSrc + '" href="' + photoSrc + '"/>');

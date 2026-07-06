@@ -54,6 +54,11 @@
     var panelSrc = colorCode
       ? '/ref/color/' + encodeURIComponent(colorFolder) + '/' + encodeURIComponent(colorCode) + '.jpg'
       : null;
+    // 소대 전용 텍스처: 문짝용 이미지는 넓은 목재 2개로 시작하지만,
+    // 소대는 폭이 좁아 넓은 목재 1개 + 얇은 목재만 보이도록 별도 크롭된 이미지 사용 (E303 등)
+    var sidePanelSrc = (colorCode && M.sideColorSuffix)
+      ? '/ref/color/' + encodeURIComponent(colorFolder) + '/' + encodeURIComponent(colorCode + M.sideColorSuffix) + '.jpg'
+      : panelSrc;
 
     var result;
     if (M.series === '엔토브') {
@@ -61,7 +66,7 @@
       var handleSrc = (handleColorCode && handleColorCode !== colorCode)
         ? '/ref/color/' + encodeURIComponent(colorFolder) + '/' + encodeURIComponent(handleColorCode) + '.jpg'
         : panelSrc;
-      result = buildEntob(state, M, panelSrc, handleSrc);
+      result = buildEntob(state, M, panelSrc, handleSrc, sidePanelSrc);
     } else {
       result = buildRoy(state, data, M, panelSrc);
     }
@@ -77,8 +82,9 @@
   // ═══════════════════════════════════════════
   //  엔토브 전용 빌더 (엑셀 참조 구조)
   // ═══════════════════════════════════════════
-  function buildEntob(state, M, photoSrc, handleSrc) {
+  function buildEntob(state, M, photoSrc, handleSrc, sidePanelSrc) {
     handleSrc = handleSrc || photoSrc;
+    sidePanelSrc = sidePanelSrc || photoSrc;
     var shapes = [];
     var fw = clamp(state.fw, 500, 5000, 1200);
     var fh = clamp(state.fh, 1000, 4000, 2300);
@@ -146,17 +152,20 @@
     }
 
     // 문짝/소대 색상 헬퍼: 색상 채우기 + 엣지 그라데이션 + 얇은 테두리
-    function panelColor(xmm, ymm, wmm, hmm) {
+    // srcOverride: 소대 전용 텍스처(sidePanelSrc) 지정 시 사용, flip: 좌측 소대는 무늬를 좌우 반전해 멀리언 쪽에 넓은 목재가 오도록 함
+    function panelColor(xmm, ymm, wmm, hmm, srcOverride, flip) {
       if (wmm <= 0 || hmm <= 0) return;
-      if (photoSrc) {
+      var src = srcOverride || photoSrc;
+      if (src) {
         // 이미지를 y=0 전체 높이로 배치하고 패널 영역만 클리핑:
         // 넓은 도어(너비 기준 스케일)와 좁은 소대(높이 기준 스케일)의
         // 스케일 기준이 달라 이미지 상단 검은 바 위치가 달라지는 문제 방지
         var panelShape = { t:'photo', x:xmm*sc, y:0, w:wmm*sc, h:fh*sc,
-                      clipY:ymm*sc, clipH:hmm*sc, src:photoSrc };
+                      clipY:ymm*sc, clipH:hmm*sc, src:src };
         // 좁은 소대는 세로(높이) 기준으로 확대되어 중앙 슬라이스만 보이는데,
         // 무늬가 좌측 넓은 목재부터 시작하는 소재(E303 등)는 좌측 정렬로 그 무늬가 보이게 함
         if (M.panelAlign === 'left') panelShape.preserveAspect = 'xMinYMid slice';
+        if (flip) panelShape.flipX = true;
         shapes.push(panelShape);
       } else {
         R(xmm, ymm, wmm, hmm, '#5a4a3a');
@@ -183,7 +192,7 @@
     // 소대 렌더:
     //   판재 → 외부 박스 전체 색상 (문짝과 동일 높이, 라인 일치)
     //   유리 → 외부 박스(=판재 사이즈)에서 사방 60mm 블랙, 나머지 유리
-    function drawSidelight(xmm, ymm, wmm, hmm) {
+    function drawSidelight(xmm, ymm, wmm, hmm, flip) {
       if (wmm <= 0 || hmm <= 0) return;
       if (state.material === 'glass') {
         var sf = E.sideFrame;  // 60mm 사방
@@ -195,7 +204,7 @@
         }
         R(xmm, ymm, wmm, hmm, 'none', '#000000', 1.5);
       } else {
-        panelColor(xmm, ymm, wmm, hmm);
+        panelColor(xmm, ymm, wmm, hmm, sidePanelSrc, flip);
       }
     }
 
@@ -234,14 +243,14 @@
     panelColor(xDL, yInner, doorWmm, doorH);
     addPinLight(xDL, yInner, doorWmm, doorH);
 
-    // ── 3. 좌측 소대 ──
+    // ── 3. 좌측 소대 ── (멀리언이 우측에 있으므로 무늬를 반전해 넓은 목재가 멀리언 쪽에 오도록 함)
     if (H.sideLeftW > 0) {
-      drawSidelight(xSL, yInner, H.sideLeftW, innerH);
+      drawSidelight(xSL, yInner, H.sideLeftW, innerH, true);
     }
 
-    // ── 4. 우측 소대 ──
+    // ── 4. 우측 소대 ── (멀리언이 좌측에 있으므로 반전 없이 넓은 목재가 자연스럽게 멀리언 쪽에 옴)
     if (H.sideRightW > 0) {
-      drawSidelight(xSR, yInner, H.sideRightW, innerH);
+      drawSidelight(xSR, yInner, H.sideRightW, innerH, false);
     }
 
     // ── 9. 멀리언 (프레임 세로대) ──
