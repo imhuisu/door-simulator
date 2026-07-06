@@ -239,8 +239,10 @@
       }
     }
 
-    // ── 2. 문짝 ──
-    panelColor(xDL, yInner, doorWmm, doorH);
+    // ── 2. 문짝 ── 넓은 목재로 시작하는 소재(E303 등)는 전자키/손잡이가 우측일 때
+    // 무늬를 좌우 반전해 넓은 목재가 항상 손잡이 쪽에 오도록 함
+    var doorFlip = (M.panelAlign === 'left') && !keyLeft;
+    panelColor(xDL, yInner, doorWmm, doorH, null, doorFlip);
     addPinLight(xDL, yInner, doorWmm, doorH);
 
     // ── 3. 좌측 소대 ── (멀리언이 우측에 있으므로 무늬를 반전해 넓은 목재가 멀리언 쪽에 오도록 함)
