@@ -4,7 +4,11 @@ const http = require('http');
 const url = require('url');
 
 let sharp;
-try { sharp = require('sharp'); } catch(e) { sharp = null; }
+try {
+  sharp = require('sharp');
+  sharp.cache(false);        // 디코드된 이미지 캐시 비활성화 (메모리 누적 방지)
+  sharp.concurrency(1);      // 동시 디코드 스레드 제한 (제한된 메모리 환경 대비)
+} catch(e) { sharp = null; }
 
 const THUMB_SIZE = 200;
 const thumbCache = {};
