@@ -198,7 +198,8 @@ function handleRequest(req, res) {
           const resized = await sharp(raw).resize(600, 600, { fit: 'inside' }).png().toBuffer();
           return 'data:image/png;base64,' + resized.toString('base64');
         }
-        const resized = await sharp(raw).resize(600, 600, { fit: 'inside' }).jpeg({ quality: 85 }).toBuffer();
+        // 2026-10-06: 600px 로 줄였다가 문 크기로 다시 늘리면 결이 뭉개진다 → 참조이미지 기준(최대 1600px, OOM 방지)까지는 원본 해상도 유지
+        const resized = await sharp(raw).resize(1600, 1600, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 88 }).toBuffer();
         return 'data:image/jpeg;base64,' + resized.toString('base64');
       } catch(e) { return null; }
     }
