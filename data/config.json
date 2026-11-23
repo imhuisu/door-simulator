@@ -5,6 +5,11 @@
   "리젠도어",
   "나인도어"
  ],
+ "hiddenSeries": [
+  "리젠도어",
+  "나인도어"
+ ],
+ "previewHash": "9d847d2985d13787b0945ec6aa5db210cd7ebfb8145d6dd3f99c5ccd8c3fcab1",
  "glass": {
   "counts": [
    0,

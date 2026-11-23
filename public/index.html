@@ -351,7 +351,30 @@ Promise.all([
   DATA.catalog      = res[5];
   DATA.colors.forEach(function(c){ if(c.image) texMap[c.id] = c.image; });
   initState(); buildAll(); render();
+  pdPreviewInit();
 });
+
+/* 미리보기(희수·승훈만) — 공개 전 기능(리젠·나인 버튼, 엔토브 손잡이 색상)은 미리보기 때만 보인다.
+   주소 뒤에 ?preview=코드 로 한 번 열면 이 브라우저에 기억, ?preview=off 로 끔.
+   코드는 config.previewHash(SHA-256)와 맞춰 본다(코드 자체는 파일에 없음). */
+var PD_PREVIEW = false;
+function pdPreviewInit() {
+  var KEY = 'pd_preview', code = null;
+  try {
+    var q = new URLSearchParams(location.search).get('preview');
+    if (q === 'off') { localStorage.removeItem(KEY); return; }
+    if (q) localStorage.setItem(KEY, q);
+    code = localStorage.getItem(KEY);
+  } catch (e) { return; }
+  var want = DATA.config && DATA.config.previewHash;
+  if (!code || !want || !(window.crypto && crypto.subtle)) return;
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(code)).then(function(buf){
+    var hex = Array.prototype.map.call(new Uint8Array(buf), function(b){ return ('0' + b.toString(16)).slice(-2); }).join('');
+    if (hex !== want) return;
+    PD_PREVIEW = true;
+    buildAll(); render();
+  }).catch(function(){});
+}
 
 function findModel(id) {
   return DATA.models.filter(function(x){ return x.id === id; })[0] || null;
@@ -608,6 +631,8 @@ function buildAll() {
   // 제품군
   var st = document.getElementById('seriesT'); st.innerHTML = '';
   DATA.config.series.forEach(function(s){
+    // 아직 공개 안 하는 제품군(config.hiddenSeries)은 미리보기(희수·승훈) 때만 버튼을 만든다 — 엔진·데이터는 들어 있음
+    if (!PD_PREVIEW && (DATA.config.hiddenSeries || []).indexOf(s) >= 0) return;
     var b = document.createElement('button');
     b.className = 'series-btn' + (state.product === s ? ' on' : '');
     b.innerHTML = s + '<small>' + ({'엔토브':'Entove','리젠도어':'Regen Door','나인도어':'Nine Door'}[s] || 'Loy Door') + '</small>';
@@ -800,7 +825,7 @@ function handleColorList() {
 function buildHandleSwatches() {
   var m = findModel(state.model);
   var sec = document.getElementById('handleColorSec');
-  if (!m || m.series !== '엔토브') { sec.style.display = 'none'; state.handleColor = ''; return; }
+  if (!PD_PREVIEW || !m || m.series !== '엔토브') { sec.style.display = 'none'; state.handleColor = ''; return; }   // 공개 전: 미리보기 때만
   sec.style.display = '';
   var c = document.getElementById('handleSwatches'); c.innerHTML = '';
   var sc = handleColorList();
@@ -1001,7 +1026,7 @@ function fetchPng(callback) {
   }).then(function(r){
     if (!r.ok) throw new Error('Server error ' + r.status);
     return r.blob();
-  }).then(callback).catch(function(e){ localPng(callback); });   // 로컬 시안: 서버가 없으면 화면 그림으로
+  }).then(callback).catch(function(e){ if (PD_PREVIEW) localPng(callback); else callback(null, e); });   // 로컬 시안(미리보기): 서버가 없으면 화면 그림으로
 }
 /* 로컬 시안용: 화면의 SVG를 PNG로 바꾼다(그림 주소는 먼저 data URL로 바꿔 넣는다) */
 function localPng(callback) {
