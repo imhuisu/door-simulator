@@ -40,6 +40,7 @@ body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans KR',sans-s
   .sw{padding:8px 10px}
   .sw .sw-thumb{width:44px;height:44px}
   #baseColorSec .color-line-label,
+  #handleColorSec .color-line-label,
   #moldColorSec .color-line-label{display:none}
   /* 모바일: 컬러 컬럼 세로 스택 */
   .cpanel{overflow-y:visible;max-height:none}
@@ -270,6 +271,10 @@ body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans KR',sans-s
         <div class="color-line-label">몰딩 색상</div>
         <div id="moldSwatches"></div>
       </div>
+      <div class="color-col" id="handleColorSec" style="display:none">
+        <div class="color-line-label">손잡이 색상</div>
+        <div id="handleSwatches"></div>
+      </div>
     </div>
   </div>
 
@@ -334,7 +339,9 @@ var PAGE_LOAD_TS = Date.now();
 Promise.all([
   'data/colors.json','data/models.json','data/keys.json',
   'data/config.json','data/seriesColors.json','/api/catalog'
-].map(function(u){ return fetch(u).then(function(r){ return r.json(); }); }))
+].map(function(u){ return fetch(u).then(function(r){ return r.json(); }).catch(function(e){
+  if (u === '/api/catalog') return {};   // 로컬 시안: 서버 API가 없으면 빈 카탈로그
+  throw e; }); }))
 .then(function(res){
   DATA.colors       = res[0];
   DATA.models       = res[1];
@@ -363,7 +370,7 @@ function initState() {
     product: m.series, model: m.id,
     colorCode: mc.length ? mc[0].code : null,
     color: m.defaultColor,
-    glass: 'L', material: 'panel', moldColor: 'MB', baseColor: 'MB',
+    glass: 'L', material: 'panel', moldColor: 'MB', baseColor: 'MB', handleColor: '',
     fix: false, fixMat: 'panel', hinge: 'R',
     fw: 1300, fh: 2300, dw: 950, dh: 2100, handleMM: 1700,
     keyId: m.keyType === 'embedded' ? 'embedded' : (m.keyOptions && m.keyOptions[0])
@@ -374,6 +381,7 @@ function applyModel(m) {
   var sc = modelColors(m);
   var codeValid = sc.some(function(x){ return x.code === state.colorCode; });
   if (!codeValid) state.colorCode = sc.length ? sc[0].code : null;
+  if (m.defaultColorCode && sc.some(function(x){ return x.code === m.defaultColorCode; })) state.colorCode = m.defaultColorCode;
   state.color = m.defaultColor;
   state.keyId = m.keyType === 'embedded' ? 'embedded' : (m.keyOptions && m.keyOptions[0]);
 }
@@ -430,7 +438,7 @@ function openColorPopup(items, urlMode, title, type) {
 function buildColorPopupBody() {
   var body = document.getElementById('colorPopupBody'); body.innerHTML = '';
   var items = _cpState.items, urlMode = _cpState.urlMode, type = _cpState.type;
-  var selected = type === 'mold' ? state.moldColor : (type === 'base' ? state.baseColor : state.colorCode);
+  var selected = type === 'mold' ? state.moldColor : (type === 'base' ? state.baseColor : (type === 'handle' ? (state.handleColor || '') : state.colorCode));
   var g = document.createElement('div'); g.className = 'swgrid';
   items.forEach(function(item){
     var code = item.code;
@@ -448,10 +456,12 @@ function buildColorPopupBody() {
     d.className = 'sw' + (selected === code ? ' on' : '');
     var thumb = document.createElement('div'); thumb.className = 'sw-thumb';
     var img = document.createElement('img'); img.src = refUrl; img.alt = item.name; img.loading = 'lazy';
-    thumb.appendChild(img); d.appendChild(thumb);
+    if (code) thumb.appendChild(img);   // 코드가 빈 항목(손잡이 '문과 같은 색')은 그림 없이
+    d.appendChild(thumb);
     var sp = document.createElement('span'); sp.textContent = item.name; d.appendChild(sp);
     d.onclick = function(){
-      if (type === 'mold') { state.moldColor = code; render(); buildMoldSwatches(); }
+      if (type === 'handle') { state.handleColor = code; render(); buildHandleSwatches(); }
+      else if (type === 'mold') { state.moldColor = code; render(); buildMoldSwatches(); }
       else if (type === 'base') { state.baseColor = code; render(); buildBaseSwatches(); }
       else { state.colorCode = code; render(); buildSwatches(); }
       closePopup('colorOverlay');
@@ -523,7 +533,9 @@ function setSideMat(v) {
 function buildSideUI() {
   var hasGlass = (state.glass !== 0);
   var sideType = state.sideType || 'fix';
-  var isRoy = (state.product === '로이도어');
+  var isRegen = (state.product === '리젠도어');
+  var isNine = (state.product === '나인도어');
+  var isRoy = (state.product === '로이도어') || isRegen || isNine;   // 리젠·나인도 소대개폐 가능
   var isOpen = hasGlass && sideType === 'open';
   if (!isRoy && isOpen) { state.sideType = 'fix'; sideType = 'fix'; isOpen = false; }
   document.getElementById('sideBtnRow').className = isRoy ? 'toggle5' : 'toggle4';
@@ -543,7 +555,19 @@ function buildSideUI() {
   var guideEl = document.getElementById('sideGuide');
   var isBoth = (state.glass === 2);
   var guideText = '';
-  if (isRoy) {
+  if (isNine) {   // 40호 카달로그 61쪽 '사이즈 별 타입구분'
+    if (isOpen)      guideText = '소대개폐형 · 소대 문짝 = 가로 − 90 − 문 − 15';
+    else if (!hasGlass) guideText = '문짝형 · W800 ~ 1150mm';
+    else if (isBoth) guideText = '양소대형 · W1400mm 이상';
+    else             guideText = '외소대형 · W1150 ~ 1400mm';
+    if (state.fix)   guideText += ' · 남마형(H2500 이상)';
+  } else if (isRegen) {   // 40호 카달로그 53쪽 '사이즈 별 타입구분'
+    if (isOpen)      guideText = '픽스개폐 비대칭형 · W1150 ~ 1700mm';
+    else if (!hasGlass) guideText = '문짝형 · W800 ~ 1150mm';
+    else if (isBoth) guideText = '양소대형 · W1400mm 이상';
+    else             guideText = '외소대형 · W1150 ~ 1400mm';
+    if (state.fix)   guideText += ' · 남마형(H2500 이상)';
+  } else if (isRoy) {
     if (!hasGlass)   guideText = 'A형 · 제작가능 W ~ 1150mm';
     else if (isBoth) guideText = 'C형 · 제작가능 W1400 ~ 1700mm';
     else             guideText = 'B형 · 제작가능 W1150 ~ 1400mm';
@@ -586,12 +610,19 @@ function buildAll() {
   DATA.config.series.forEach(function(s){
     var b = document.createElement('button');
     b.className = 'series-btn' + (state.product === s ? ' on' : '');
-    b.innerHTML = s + '<small>' + (s === '엔토브' ? 'Entove' : 'Loy Door') + '</small>';
+    b.innerHTML = s + '<small>' + ({'엔토브':'Entove','리젠도어':'Regen Door','나인도어':'Nine Door'}[s] || 'Loy Door') + '</small>';
     b.onclick = function(){
+      var prevProduct = state.product;
       state.product = s;
       var fm = DATA.models.filter(function(x){ return x.series === s; })[0];
       state.model = fm.id;
       applyModel(fm);
+      // 문 가로 기본값: 리젠·나인 960(작업지시서 기본폭), 그 밖은 950. 제품군 기본값이 서로 다를 때만 바꾼다
+      var defDw = function(p){ return (p === '리젠도어' || p === '나인도어') ? 960 : 950; };
+      if (defDw(prevProduct) !== defDw(s) && state.dw === defDw(prevProduct)) {
+        state.dw = defDw(s);
+        document.getElementById('dw').value = state.dw;
+      }
       buildAll(); render();
     };
     st.appendChild(b);
@@ -606,6 +637,7 @@ function buildAll() {
   buildSwatches();
   buildBaseSwatches();
   buildMoldSwatches();
+  buildHandleSwatches();
 
   // 소대 UI
   buildSideUI();
@@ -754,6 +786,43 @@ function buildMoldSwatches() {
     c.appendChild(makeSwGridGeneric(sc, folder, state.moldColor, function(code){
       state.moldColor = code; render(); buildMoldSwatches();
     }));
+  }
+}
+
+/* 엔토브 손잡이 색상(2026-11-23 승훈) — 카달로그 25쪽: 손잡이는 현관문과 조합해 고를 수 있고, 고르지 않으면 문과 같은 색.
+   고를 수 있는 색 = 강판 색 + 포인트 색(다크서스 · 리스타블랙). 맨 앞 '문과 같은 색' = handleColor 빈 값 */
+var HANDLE_POINT_COLORS = [{code:'DS', name:'다크서스'}, {code:'LB', name:'리스타블랙'}];
+function handleColorList() {
+  var sc = ((DATA.seriesColors && DATA.seriesColors['강판']) || []).slice();
+  HANDLE_POINT_COLORS.forEach(function(x){ if (!sc.some(function(y){ return y.code === x.code; })) sc.push(x); });
+  return sc;
+}
+function buildHandleSwatches() {
+  var m = findModel(state.model);
+  var sec = document.getElementById('handleColorSec');
+  if (!m || m.series !== '엔토브') { sec.style.display = 'none'; state.handleColor = ''; return; }
+  sec.style.display = '';
+  var c = document.getElementById('handleSwatches'); c.innerHTML = '';
+  var sc = handleColorList();
+  if (!sc.length) return;
+  var cur = state.handleColor || '';
+  if (isMobile()) {
+    var selItem = sc.filter(function(x){ return x.code === cur; })[0];
+    var thumbUrl = selItem ? '/ref/color/' + encodeURIComponent('강판') + '/' + encodeURIComponent(selItem.code) + '.jpg?thumb=1' : null;
+    var btn = makeColorLineBtn('손잡이 색상', selItem ? selItem.name : '문과 같은 색', thumbUrl);
+    btn.onclick = function(){ openColorPopup([{code:'', name:'문과 같은 색'}].concat(sc), { folder: '강판' }, '손잡이 색상', 'handle'); };
+    c.appendChild(btn);
+  } else {
+    var g = makeSwGridGeneric(sc, '강판', cur, function(code){
+      state.handleColor = code; render(); buildHandleSwatches();
+    });
+    var same = document.createElement('div');
+    same.className = 'sw' + (cur === '' ? ' on' : '');
+    var th = document.createElement('div'); th.className = 'sw-thumb'; same.appendChild(th);
+    var sp = document.createElement('span'); sp.textContent = '문과 같은 색'; same.appendChild(sp);
+    same.onclick = function(){ state.handleColor = ''; render(); buildHandleSwatches(); };
+    g.insertBefore(same, g.firstChild);
+    c.appendChild(g);
   }
 }
 
@@ -932,7 +1001,38 @@ function fetchPng(callback) {
   }).then(function(r){
     if (!r.ok) throw new Error('Server error ' + r.status);
     return r.blob();
-  }).then(callback).catch(function(e){ callback(null, e); });
+  }).then(callback).catch(function(e){ localPng(callback); });   // 로컬 시안: 서버가 없으면 화면 그림으로
+}
+/* 로컬 시안용: 화면의 SVG를 PNG로 바꾼다(그림 주소는 먼저 data URL로 바꿔 넣는다) */
+function localPng(callback) {
+  var src = document.getElementById('doorSvg');
+  var svg = src.cloneNode(true);
+  var vb = (src.getAttribute('viewBox') || '0 0 400 800').split(/\s+/).map(Number);
+  var W = vb[2], H = vb[3], K = 3;
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  svg.setAttribute('width', W * K); svg.setAttribute('height', H * K);
+  var imgs = Array.prototype.slice.call(svg.querySelectorAll('image'));
+  Promise.all(imgs.map(function(im){
+    var h = im.getAttribute('href') || im.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || '';
+    if (!h || h.indexOf('data:') === 0) return null;
+    return fetch(h).then(function(r){ return r.blob(); }).then(function(b){
+      return new Promise(function(ok){ var fr = new FileReader(); fr.onloadend = function(){
+        im.setAttribute('href', fr.result); im.setAttributeNS('http://www.w3.org/1999/xlink', 'href', fr.result); ok(); };
+        fr.readAsDataURL(b); });
+    }).catch(function(){});
+  })).then(function(){
+    var xml = new XMLSerializer().serializeToString(svg);
+    var img = new Image();
+    img.onload = function(){
+      var cv = document.createElement('canvas'); cv.width = W * K; cv.height = H * K;
+      var cx = cv.getContext('2d'); cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cv.width, cv.height);
+      cx.drawImage(img, 0, 0, cv.width, cv.height);
+      cv.toBlob(function(b){ callback(b, b ? null : new Error('png')); }, 'image/png');
+    };
+    img.onerror = function(){ callback(null, new Error('svg')); };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+  });
 }
 
 document.getElementById('copyBtn').onclick = function(){

@@ -1,7 +1,9 @@
 {
  "series": [
   "엔토브",
-  "로이도어"
+  "로이도어",
+  "리젠도어",
+  "나인도어"
  ],
  "glass": {
   "counts": [
@@ -58,5 +60,27 @@
   "normalMM": 35,
   "entobHandleSideMM": 100
  },
- "entobKeyFromBottomMM": 1000
+ "entobKeyFromBottomMM": 1000,
+ "regen": {
+  "frameSideMM": 40,
+  "frameSideWithSodaeMM": 50,
+  "frameTopMM": 85,
+  "sillMM": 25,
+  "mullionVisibleMM": 25,
+  "leafBorderMM": 37,
+  "keyFromBottomMM": 1000,
+  "defaultDw": 960
+ },
+ "nine": {
+  "frameSideMM": 65,
+  "frameSideWithSodaeMM": 45,
+  "frameTopMM": 119,
+  "sillMM": 42,
+  "mullionVisibleMM": 40,
+  "leafBorderMM": 19,
+  "keyFromBottomMM": 1000,
+  "defaultDw": 960,
+  "doorWMinus": 130,
+  "doorHMinus": 161
+ }
 }

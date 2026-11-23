@@ -66,7 +66,15 @@
       var handleSrc = (handleColorCode && handleColorCode !== colorCode)
         ? '/ref/color/' + encodeURIComponent(colorFolder) + '/' + encodeURIComponent(handleColorCode) + '.jpg'
         : panelSrc;
+      // 손잡이 색상 선택(2026-11-23 승훈): state.handleColor = 강판 색 코드. 비어 있으면 문과 같은 색(기존 동작)
+      if (state.handleColor) {
+        handleSrc = '/ref/color/' + encodeURIComponent('강판') + '/' + encodeURIComponent(state.handleColor) + '.jpg';
+      }
       result = buildEntob(state, M, panelSrc, handleSrc, sidePanelSrc);
+    } else if (M.series === '리젠도어') {
+      result = buildRegen(state, data, M, panelSrc);
+    } else if (M.series === '나인도어') {
+      result = buildNine(state, data, M, panelSrc);
     } else {
       result = buildRoy(state, data, M, panelSrc);
     }
@@ -1561,6 +1569,625 @@
         sideW: Math.round(Math.max(leftSideW, rightSideW)),
         nSide: (leftSideW > 0 ? 1 : 0) + (rightSideW > 0 ? 1 : 0),
         fixMM: Math.round(fixH)
+      }
+    };
+  }
+
+  // ═══════════════════════════════════════════
+  //  리젠도어 빌더 (2026-11-23 시안)
+  //  치수 출처: 리젠 작업지시서 No.40(251120) 엑셀
+  //   - 문짝 가로 = 프레임 가로 − 80(소대 없음) / 입력값(소대 있음, 기본 960)   … E17
+  //   - 문짝 세로 = 프레임 세로 − 25 − 85                                       … I17
+  //   - 통바·문지방 = 가로 − 100 → 기둥 50, 문짝이 기둥을 10 덮음 → 보이는 기둥 40
+  //   - 외소대 폭 = 가로 − 100 − 35 − 문 + 20 − 1, 양소대 = (가로 − 100 − 70 − 문 + 20 − 2) / 2  … AE23·AE24
+  //   - 소대개폐 폭 = 가로 − 40 − 문 − 10 − 40                                   … AF33
+  //   - 전면판 = 문짝 − 74 (문짝 알루미늄 테두리 37)                             … AM5·AN5
+  //   - 모델별 전면판 나눔(키 쪽 200·240 등)                                     … AJ7~ 모델 표
+  // ═══════════════════════════════════════════
+  function buildRegen(state, data, M, panelSrc) {
+    var shapes = [];
+    var G = {
+      sideFr: 40,     // 문짝 옆 기둥이 보이는 폭
+      sideFrSL: 50,   // 소대 옆 기둥이 보이는 폭
+      topFr: 85,      // 문짝 위 가로대(뚜껑바 + 통바)가 보이는 높이
+      btm: 25,        // 문지방
+      mull: 25,       // 소대 기둥(35)에서 문짝이 10 덮고 남는 폭
+      leaf: 37,       // 문짝 테두리(전면판 = 문짝 − 74)
+      slBX: 14,       // 소대 판넬 좌우 테두리(판넬 = 소대 − 28)
+      slBY: 34,       // 소대 판넬 상하 테두리(판넬 = 소대 높이 − 69)
+      capFr: 30,      // 남마가 있을 때 맨 위 틀
+      fixB: 20,       // 남마 20바
+      joint: 6,       // 판넬 사이 줄(실제 틈 1.5 — 그림에서는 보이게 6)
+      openGap: 10     // 소대개폐: 문짝과 소대 문짝 사이
+    };
+    var dp = M.designParams || {};
+
+    var fw = clamp(state.fw, 500, 5000, 1300);
+    var fh = clamp(state.fh, 1000, 4000, 2300);
+    var dw = clamp(state.dw, 200, 3000, 960);
+    var VW = 400, sc = VW / fw, VH = fh * sc;
+    var BLK = '#0c0c0d', SLV = '#8a8c8f', LEAF = '#151517', JNT = '#070708';
+    var POINT_SRC = '/ref/color/' + encodeURIComponent('복합판넬') + '/' + encodeURIComponent(dp.pointColor || '블랙') + '.jpg';
+    var DS_SRC = '/ref/color/%EA%B0%95%ED%8C%90/DS.jpg';
+
+    var keyLeft = (state.hinge !== 'L');
+    var isOpen = (state.sideType === 'open');
+    var hasL = (state.glass === 'L' || state.glass === 2);
+    var hasR = (state.glass === 'R' || state.glass === 2);
+    if (isOpen) { hasL = keyLeft; hasR = !keyLeft; }   // 소대개폐: 손잡이 쪽 소대가 열린다
+
+    // ── 수직 ──
+    var hasFix = state.fix === true || state.fix === 'true';
+    var dh = clamp(state.dh, 500, 3900, 0);
+    var yTop, doorH, yBar = 0, yFix = 0, fixH = 0;
+    if (!hasFix) {
+      yTop  = G.topFr;
+      doorH = fh - G.topFr - G.btm;
+    } else {
+      var maxDh = fh - G.btm - G.topFr - G.capFr - 100;
+      doorH = (dh >= 500 && dh <= maxDh) ? dh : Math.max(500, fh - G.btm - G.topFr - G.capFr - 300);
+      yTop  = fh - G.btm - doorH;
+      yBar  = yTop - G.topFr;
+      yFix  = G.capFr;
+      fixH  = Math.max(0, yBar - G.capFr);
+    }
+    var yBot = yTop + doorH;
+
+    // ── 수평 ──
+    var lf = (hasL && !isOpen) ? G.sideFrSL : G.sideFr;
+    var rf = (hasR && !isOpen) ? G.sideFrSL : G.sideFr;
+    var inner = fw - lf - rf;
+    var mL = (hasL && !isOpen) ? G.mull : 0, mR = (hasR && !isOpen) ? G.mull : 0;
+    var gL = (hasL && isOpen) ? G.openGap : 0, gR = (hasR && isOpen) ? G.openGap : 0;
+    var nSide = (hasL ? 1 : 0) + (hasR ? 1 : 0);
+    var doorW = nSide ? Math.min(dw, inner - mL - mR - gL - gR - 60 * nSide) : inner;
+    if (doorW < 300) doorW = Math.min(300, inner);
+    var space = Math.max(0, inner - doorW - mL - mR - gL - gR);
+    var sLW = hasL ? (hasR ? space / 2 : space) : 0;
+    var sRW = hasR ? (hasL ? space / 2 : space) : 0;
+    var xSL = lf, xML = lf + sLW, xDL = xML + mL + gL, xDR = xDL + doorW, xMR = xDR + gR, xSR = xMR + mR;
+
+    function R(xmm, ymm, wmm, hmm, fill, stroke, sw, opacity) {
+      if (wmm <= 0 || hmm <= 0) return;
+      var s = { t:'rect', x:xmm*sc, y:ymm*sc, w:wmm*sc, h:hmm*sc, fill:fill };
+      if (stroke) { s.stroke = stroke; s.sw = sw || 1; }
+      if (opacity != null) s.opacity = opacity;
+      shapes.push(s);
+    }
+    function LN(x1, y1, x2, y2, stroke, sw, op) {
+      shapes.push({ t:'line', x1:x1*sc, y1:y1*sc, x2:x2*sc, y2:y2*sc, stroke:stroke, sw:sw, opacity:op == null ? 1 : op });
+    }
+    // 사진: (ax,ay,aw,ah) 넓이에 사진을 깔고 (x,y,w,h)만 보이게 자른다 → 조각이 나뉘어도 결이 이어진다
+    function PH(src, ax, ay, aw, ah, x, y, w, h) {
+      if (w <= 0 || h <= 0) return;
+      if (!src) { R(x, y, w, h, '#5a4a3a'); return; }
+      shapes.push({ t:'photo', x:ax*sc, y:ay*sc, w:aw*sc, h:ah*sc,
+                    clipX:x*sc, clipW:w*sc, clipY:y*sc, clipH:h*sc, src:src });
+    }
+    function srcOf(fill) { return fill === 'point' ? POINT_SRC : (fill === 'ds' ? DS_SRC : panelSrc); }
+
+    // 판넬 넓이(px,py,pw,ph)를 손잡이 쪽부터 세로 조각(cols)으로 나눠 그린다
+    //  cols: [{w:200, fill:'point'|'panel'|'ds', rows:n, planks:n, ribbed:true} | {flex:true, ...}]
+    function drawCols(cols, px, py, pw, ph, fromLeft) {
+      var j = G.joint, fixed = 0, nFlex = 0, i;
+      for (i = 0; i < cols.length; i++) { if (cols[i].flex) nFlex++; else fixed += cols[i].w; }
+      var flexW = nFlex ? Math.max(40, (pw - fixed - j * (cols.length - 1)) / nFlex) : 0;
+      var pos = 0, out = [];
+      for (i = 0; i < cols.length; i++) {
+        var c = cols[i], w = c.flex ? flexW : c.w;
+        if (pos + w > pw) w = Math.max(0, pw - pos);
+        var x = fromLeft ? (px + pos) : (px + pw - pos - w);
+        var src = srcOf(c.fill);
+        if (c.fill === 'panel') PH(src, px, py, pw, ph, x, py, w, ph);
+        else PH(src, x, py, w, ph, x, py, w, ph);
+        var k;
+        if (c.ribbed) {
+          for (k = 12; k < w; k += 12) LN(x + k, py, x + k, py + ph, '#3a3a40', 0.5, 0.55);
+        }
+        if (c.rows > 1) {
+          var rh = (ph - j * (c.rows - 1)) / c.rows;
+          for (k = 1; k < c.rows; k++) R(x, py + k * rh + (k - 1) * j, w, j, JNT);
+        }
+        if (c.planks > 1) {
+          var pwk = (w - j * (c.planks - 1)) / c.planks;
+          for (k = 1; k < c.planks; k++) R(x + k * pwk + (k - 1) * j, py, j, ph, JNT);
+        }
+        out.push({ x:x, w:w });
+        if (i < cols.length - 1) {
+          var jx = fromLeft ? (x + w) : (x - j);
+          R(jx, py, j, ph, JNT);
+        }
+        pos += w + j;
+      }
+      return out;
+    }
+
+    // 문짝 디자인. 돌려주는 값: 키 가로 중심(mm), 가로 줄 높이(소대에 같은 줄을 긋는 모델용)
+    function drawDoorDesign(px, py, pw, ph, fromLeft) {
+      var j = G.joint, info = { keyCx: null, hLines: [] };
+      var design = M.design, cols = dp.cols, placed, k;
+      if (design === 'rg-band') {
+        // 가로 3단: 위·아래는 통판, 가운데 단은 키 쪽 조각(다크서스) + 나머지
+        var mid = Math.min(dp.midH || 1300, ph * 0.62);
+        var top = (ph - mid - 2 * j) / 2;
+        PH(panelSrc, px, py, pw, ph, px, py, pw, top);
+        PH(panelSrc, px, py, pw, ph, px, py + top + mid + 2 * j, pw, top);
+        R(px, py + top, pw, j, JNT);
+        R(px, py + top + j + mid, pw, j, JNT);
+        placed = drawCols(cols, px, py + top + j, pw, mid, fromLeft);
+        info.hLines = [py + top, py + top + j + mid];
+      } else if (cols && cols.length) {
+        placed = drawCols(cols, px, py, pw, ph, fromLeft);
+        if (dp.sideRows > 1) {
+          var rh = (ph - j * (dp.sideRows - 1)) / dp.sideRows;
+          for (k = 1; k < dp.sideRows; k++) info.hLines.push(py + k * rh + (k - 1) * j);
+        }
+      } else {
+        PH(panelSrc, px, py, pw, ph, px, py, pw, ph);
+        placed = [{ x:px, w:pw }];
+      }
+      var keyOff = dp.keyCx || (cols && cols.length && !cols[0].flex ? cols[0].w / 2 : 100);
+      info.keyCx = fromLeft ? (px + keyOff) : (px + pw - keyOff);
+
+      if (dp.silverLine && placed.length > 1) {
+        // R702: 키 쪽 조각과 본판 사이 은색 줄 (위 17% · 아래 20% 띄움 — 카달로그 그림 비율)
+        var sx = fromLeft ? (placed[0].x + placed[0].w) : (placed[0].x - j);
+        R(sx, py + ph * 0.17, j, ph * 0.63, '#c9ccd0');
+      }
+      if (dp.goldBar && placed.length > 1) {
+        // R731: 검은 띠 위 금색 손잡이 모양 줄 (긴 줄 1 + 짧은 줄 2 — 카달로그 그림 비율)
+        var gcx = placed[1].x + placed[1].w / 2;
+        R(gcx - 3, py + ph * 0.30, 6, ph * 0.37, '#c9a45c');
+        R(gcx - 22, py + ph * 0.445, 5, ph * 0.09, '#c9a45c');
+        R(gcx + 17, py + ph * 0.445, 5, ph * 0.09, '#c9a45c');
+      }
+      return info;
+    }
+
+    // ── 1. 바탕 ──
+    R(0, 0, fw, fh, BLK);
+
+    // ── 2. 문틀 ──
+    R(0, 0, lf, fh, 'almV');
+    R(fw - rf, 0, rf, fh, 'almV');
+    if (!hasFix) {
+      R(lf, 0, inner, G.topFr, 'almH');
+    } else {
+      R(lf, 0, inner, G.capFr, 'almH');
+      R(lf, yBar, inner, G.topFr, 'almH');
+    }
+    // 문틀 단(계단 모양) 선
+    var stepC = '#2c2c33';
+    LN(lf * 0.35, 0, lf * 0.35, fh, stepC, 0.6, 0.9);
+    LN(lf * 0.72, 0, lf * 0.72, fh, stepC, 0.6, 0.7);
+    LN(fw - rf * 0.35, 0, fw - rf * 0.35, fh, stepC, 0.6, 0.9);
+    LN(fw - rf * 0.72, 0, fw - rf * 0.72, fh, stepC, 0.6, 0.7);
+    var yb0 = hasFix ? yBar : 0;
+    LN(lf * 0.35, yb0 + G.topFr * 0.30, fw - rf * 0.35, yb0 + G.topFr * 0.30, stepC, 0.6, 0.9);
+    LN(lf * 0.72, yb0 + G.topFr * 0.62, fw - rf * 0.72, yb0 + G.topFr * 0.62, stepC, 0.6, 0.7);
+    if (hasFix) LN(lf * 0.35, G.capFr * 0.45, fw - rf * 0.35, G.capFr * 0.45, stepC, 0.6, 0.9);
+
+    // ── 3. 문짝 ──
+    R(xDL, yTop, doorW, doorH, LEAF);
+    R(xDL, yTop, doorW, doorH, 'none', '#000000', 1.2);
+    var px = xDL + G.leaf, py = yTop + G.leaf, pw = doorW - 2 * G.leaf, ph = doorH - 2 * G.leaf;
+    var info = drawDoorDesign(px, py, pw, ph, keyLeft);
+    R(px, py, pw, ph, 'none', '#000000', 0.8, 0.8);
+
+    // ── 4. 전자키 높이(문틀 바닥에서 1000) ──
+    var keyCy = fh - 1000;
+
+    // R701: 키 둘레 검은 반달 모양(문짝 판 가장자리에서 시작)
+    if (M.design === 'rg-dshape') {
+      var dW = Math.min(dp.dW || 200, pw * 0.5), dH = Math.min(dp.dH || 1100, ph * 0.8);
+      var dT = Math.max(py + 20, Math.min(keyCy - dH / 2, py + ph - dH - 20)), dB = dT + dH;
+      var x0 = keyLeft ? px : (px + pw), x1 = keyLeft ? (px + dW) : (px + pw - dW);
+      var rr = dW * sc, sw1 = keyLeft ? 1 : 0;
+      shapes.push({ t:'path', fill:'#0e0e10', stroke:'#000000', sw:0.5,
+        d: 'M' + (x0*sc) + ',' + (dT*sc) +
+           ' A' + rr + ',' + rr + ' 0 0 ' + sw1 + ' ' + (x1*sc) + ',' + ((dT*sc) + rr) +
+           ' L' + (x1*sc) + ',' + ((dB*sc) - rr) +
+           ' A' + rr + ',' + rr + ' 0 0 ' + sw1 + ' ' + (x0*sc) + ',' + (dB*sc) + ' Z' });
+    }
+
+    // ── 5. 소대 ──
+    function drawSide(x, w) {
+      if (w <= 0) return;
+      var sideSrc = (dp.sideFill === 'point') ? POINT_SRC : panelSrc;   // R721~723: 소대는 블랙 판(카달로그 그림)
+      if (isOpen) {
+        // 소대개폐: 작은 문짝(테두리 37)
+        R(x, yTop, w, doorH, LEAF);
+        R(x, yTop, w, doorH, 'none', '#000000', 1.2);
+        var ox = x + G.leaf, ow = w - 2 * G.leaf;
+        if (ow > 0) {
+          if (state.material === 'glass') R(ox, py, ow, ph, 'glass', '#000000', 1);
+          else { PH(sideSrc, ox, py, ow, ph, ox, py, ow, ph); R(ox, py, ow, ph, 'none', '#000000', 0.8, 0.8); }
+          info.hLines.forEach(function (ly) { if (state.material !== 'glass') R(ox, ly, ow, G.joint, JNT); });
+        }
+        return;
+      }
+      R(x, yTop, w, doorH, LEAF);
+      var sx = x + G.slBX, sy = yTop + G.slBY, sw2 = w - 2 * G.slBX, sh = doorH - 2 * G.slBY;
+      if (sw2 <= 0 || sh <= 0) return;
+      if (state.material === 'glass') {
+        R(sx, sy, sw2, sh, 'glass', '#000000', 1);
+      } else {
+        PH(sideSrc, sx, sy, sw2, sh, sx, sy, sw2, sh);
+        R(sx, sy, sw2, sh, 'none', '#000000', 0.8, 0.8);
+        info.hLines.forEach(function (ly) { if (ly > sy && ly < sy + sh) R(sx, ly, sw2, G.joint, JNT); });
+      }
+    }
+    drawSide(xSL, sLW);
+    drawSide(xSR, sRW);
+
+    // ── 6. 소대 기둥 ──
+    if (mL > 0) { R(xML, yTop, mL, doorH, 'almV'); LN(xML + mL * 0.5, yTop, xML + mL * 0.5, yBot, stepC, 0.5, 0.7); }
+    if (mR > 0) { R(xMR, yTop, mR, doorH, 'almV'); LN(xMR + mR * 0.5, yTop, xMR + mR * 0.5, yBot, stepC, 0.5, 0.7); }
+
+    // ── 7. 남마 ──
+    if (hasFix && fixH > 0) {
+      R(lf, yFix, inner, fixH, LEAF);
+      var fx = lf + G.fixB, fy = yFix + G.fixB, fwid = inner - 2 * G.fixB, fhei = fixH - 2 * G.fixB;
+      if (fwid > 0 && fhei > 0) {
+        if (state.fixMat === 'glass') R(fx, fy, fwid, fhei, 'glass', '#000000', 1);
+        else { PH(panelSrc, fx, fy, fwid, fhei, fx, fy, fwid, fhei); R(fx, fy, fwid, fhei, 'none', '#000000', 0.8, 0.8); }
+      }
+    }
+
+    // ── 8. 문지방 ──
+    R(lf, yBot, inner, G.btm, SLV);
+    R(lf, yBot, inner, G.btm, 'none', '#000000', 1);
+
+    // ── 9. 경첩(3개) — 위에서 240·640, 아래에서 180 (카달로그 그림 비율) ──
+    var hW = 14, hH = 120;
+    var hEdges = [keyLeft ? { x: xDR - 3 } : { x: xDL - hW + 3 }];
+    if (isOpen) hEdges.push(keyLeft ? { x: xSL - hW + 3 } : { x: xSR + sRW - 3 });
+    hEdges.forEach(function (e) {
+      [yTop + 240, yTop + 640, yBot - 180].forEach(function (cy) {
+        R(e.x, cy - hH / 2, hW, hH, '#1b1b1f', '#000000', 0.5);
+        LN(e.x, cy, e.x + hW, cy, '#3a3a40', 0.5, 0.8);
+      });
+    });
+
+    // ── 10. 전자키 ──
+    var keyData = null;
+    if (data.keys && state.keyId) {
+      for (var ki = 0; ki < data.keys.length; ki++) if (data.keys[ki].id === state.keyId) keyData = data.keys[ki];
+    }
+    var keyW = (keyData && keyData.w) ? keyData.w : 83;
+    var keyH = (keyData && keyData.h) ? keyData.h : 345;
+    var keyX = info.keyCx - keyW / 2, keyY = keyCy - keyH / 2;
+    if (keyData && keyData.image) {
+      shapes.push({ t:'image', x:keyX*sc, y:keyY*sc, w:keyW*sc, h:keyH*sc, href:keyData.image });
+    } else {
+      R(keyX, keyY, keyW, keyH, '#1a1a1a', '#444444', 0.5);
+    }
+
+    // ── 11. 외곽 ──
+    shapes.push({ t:'rect', x:0, y:0, w:VW, h:VH, fill:'none', stroke:'#000000', sw:1.5 });
+
+    return {
+      width: VW, height: VH, shapes: shapes,
+      meta: {
+        doorW: Math.round(doorW), doorH: Math.round(doorH),
+        frameW: Math.round(fw), frameH: Math.round(fh),
+        sideW: Math.round(Math.max(sLW, sRW)),
+        nSide: (sLW > 0 ? 1 : 0) + (sRW > 0 ? 1 : 0),
+        fixMM: Math.round(fixH)
+      }
+    };
+  }
+
+  // ═══════════════════════════════════════════
+  //  나인도어 빌더 (2026-11-23 시안, 비단열)
+  //  치수 출처: 나인도어 작업지시서 ver(251222) 엑셀 '비단열' 시트
+  //   - 문짝 가로 = 프레임 가로 − 130(소대 없음) / 입력값(소대 있음, 기본 960)          … L7
+  //   - 문짝 세로 = 프레임 세로 − 161 (문지방 35 + 여유 7 + 통바 86 + ㄷ자 3 + 뚜껑 30)  … M7·AI3
+  //   - 프레임바 45, 통바·문지방 = 가로 − 90, 소대 기둥바 50                             … T16·M10·T20
+  //   - 외소대 판 = 가로 − 1082, 양소대 판 = (가로 − 1085)/2 + 8                          … M24·O24
+  //   - 소대개폐 문짝 = 가로 − 90 − 문 − 15                                              … M30
+  //   - 전면판 = 문짝 − 38 (가로), 문짝 세로 − 5                                          … BQ11·BT11
+  //   - 문 유리 세로 = 문짝 세로 − 287, 소대 유리 가로 = 소대 판 − 101                    … C13·M26
+  //   - 남마 판 세로 = 남마포함높이 − 세로 − 5                                           … N34
+  //   - 모델별 전면판 나눔(키 쪽 240, 가로 3단 등)                                       … AS~BB 모델 표
+  //  경첩은 매립형 피봇힌지라 그리지 않는다(40호 카달로그 61쪽).
+  // ═══════════════════════════════════════════
+  function buildNine(state, data, M, panelSrc) {
+    var shapes = [];
+    var G = {
+      sideFr: 65,     // 문짝 옆 틀이 보이는 폭 = 프레임바 45 + 날개 20  (문 = 가로 − 130)
+      sideFrSL: 45,   // 소대 옆 틀 = 프레임바 45
+      topFr: 119,     // 문짝 위 틀 = 뚜껑 30 + 통바 86 + ㄷ자 3
+      btm: 42,        // 문지방 35 + 여유 7
+      mull: 40,       // 소대 기둥(50)이 보이는 폭 — 가정
+      leafX: 19,      // 문짝 테두리(전면판 = 문짝 − 38)
+      leafY: 8,       // 문짝 위·아래 테두리(실제 2.5 — 그림에서는 보이게 8)
+      slBX: 8,        // 소대 판 좌우 테두리(그림용)
+      slBY: 14,       // 소대 판 상하 테두리(그림용)
+      capFr: 30,      // 남마가 있을 때 맨 위 뚜껑
+      fixBar: 89,     // 남마와 문 사이 가로대(통바 86 + ㄷ자 3)
+      fixB: 14,       // 남마 판 테두리(그림용)
+      joint: 6,       // 판넬 사이 줄(실제 틈 2 — 그림에서는 보이게 6)
+      openGap: 15,    // 소대개폐: 문짝과 소대 문짝 사이
+      glassCut: 287,  // 문 유리 세로 = 문짝 세로 − 287
+      sideGlassCut: 101 // 소대 유리 가로 = 소대 판 − 101
+    };
+    var dp = M.designParams || {};
+
+    var fw = clamp(state.fw, 500, 5000, 1240);
+    var fh = clamp(state.fh, 1000, 4000, 2200);
+    var dw = clamp(state.dw, 200, 3000, 960);
+    var VW = 400, sc = VW / fw, VH = fh * sc;
+    var BLK = '#0c0c0d', SLV = '#b9bbbe', LEAF = '#17130f', JNT = '#070708', STS = '#c3c6ca';
+    function colorSrc(folder, code) { return '/ref/color/' + encodeURIComponent(folder) + '/' + encodeURIComponent(code) + '.jpg'; }
+    var POINT_SRC = colorSrc(dp.pointFolder || '복합판넬', dp.pointColor || '블랙');
+    var DS_SRC = colorSrc('강판', 'DS');
+
+    var keyLeft = (state.hinge !== 'L');
+    var isOpen = (state.sideType === 'open');
+    var hasL = (state.glass === 'L' || state.glass === 2);
+    var hasR = (state.glass === 'R' || state.glass === 2);
+    if (isOpen) { hasL = keyLeft; hasR = !keyLeft; }   // 소대개폐: 손잡이 쪽 소대가 열린다
+
+    // ── 수직 ──
+    var hasFix = state.fix === true || state.fix === 'true';
+    var dh = clamp(state.dh, 500, 3900, 0);
+    var yTop, doorH, yBar = 0, yFix = 0, fixH = 0;
+    if (!hasFix) {
+      yTop  = G.topFr;
+      doorH = fh - G.topFr - G.btm;
+    } else {
+      var maxDh = fh - G.btm - G.fixBar - G.capFr - 100;
+      doorH = (dh >= 500 && dh <= maxDh) ? dh : Math.max(500, fh - G.btm - G.fixBar - G.capFr - 300);
+      yTop  = fh - G.btm - doorH;
+      yBar  = yTop - G.fixBar;
+      yFix  = G.capFr;
+      fixH  = Math.max(0, yBar - G.capFr);
+    }
+    var yBot = yTop + doorH;
+
+    // ── 수평 ──
+    var lf = (hasL || isOpen) ? G.sideFrSL : G.sideFr;   // 소대개폐: 양쪽 다 프레임바 45(엑셀 M30 = 가로 − 90 − 문 − 15)
+    var rf = (hasR || isOpen) ? G.sideFrSL : G.sideFr;
+    var inner = fw - lf - rf;
+    var mL = (hasL && !isOpen) ? G.mull : 0, mR = (hasR && !isOpen) ? G.mull : 0;
+    var gL = (hasL && isOpen) ? G.openGap : 0, gR = (hasR && isOpen) ? G.openGap : 0;
+    var nSide = (hasL ? 1 : 0) + (hasR ? 1 : 0);
+    var doorW = nSide ? Math.min(dw, inner - mL - mR - gL - gR - 60 * nSide) : inner;
+    if (doorW < 300) doorW = Math.min(300, inner);
+    var space = Math.max(0, inner - doorW - mL - mR - gL - gR);
+    var sLW = hasL ? (hasR ? space / 2 : space) : 0;
+    var sRW = hasR ? (hasL ? space / 2 : space) : 0;
+    var xSL = lf, xML = lf + sLW, xDL = xML + mL + gL, xDR = xDL + doorW, xMR = xDR + gR, xSR = xMR + mR;
+
+    function R(xmm, ymm, wmm, hmm, fill, stroke, sw, opacity) {
+      if (wmm <= 0 || hmm <= 0) return;
+      var s = { t:'rect', x:xmm*sc, y:ymm*sc, w:wmm*sc, h:hmm*sc, fill:fill };
+      if (stroke) { s.stroke = stroke; s.sw = sw || 1; }
+      if (opacity != null) s.opacity = opacity;
+      shapes.push(s);
+    }
+    function LN(x1, y1, x2, y2, stroke, sw, op) {
+      shapes.push({ t:'line', x1:x1*sc, y1:y1*sc, x2:x2*sc, y2:y2*sc, stroke:stroke, sw:sw, opacity:op == null ? 1 : op });
+    }
+    // 사진: (ax,ay,aw,ah) 넓이에 사진을 깔고 (x,y,w,h)만 보이게 자른다 → 조각이 나뉘어도 결이 이어진다
+    function PH(src, ax, ay, aw, ah, x, y, w, h) {
+      if (w <= 0 || h <= 0) return;
+      if (!src) { R(x, y, w, h, '#5a4a3a'); return; }
+      shapes.push({ t:'photo', x:ax*sc, y:ay*sc, w:aw*sc, h:ah*sc,
+                    clipX:x*sc, clipW:w*sc, clipY:y*sc, clipH:h*sc, src:src });
+    }
+    function srcOf(fill) { return fill === 'point' ? POINT_SRC : (fill === 'ds' ? DS_SRC : panelSrc); }
+
+    // 단조 무늬(N264): 유리 위 작은 네모들 — 카달로그 그림을 흉내 낸 것
+    function deco(x, y, w, h) {
+      R(x, y, w, h, '#101012');
+      var cols = 3, cw = w / cols, yy = y + 18, i = 0;
+      while (yy < y + h - 30) {
+        var c = Math.floor(rnd(7, i, 3) * cols), bh = 40 + Math.floor(rnd(11, i, 5) * 4) * 30;
+        if (yy + bh > y + h - 12) bh = y + h - 12 - yy;
+        if (bh > 14) R(x + c * cw + cw * 0.18, yy, cw * 0.64, bh, '#9a9da1', '#000000', 0.4, 0.9);
+        var c2 = (c + 1 + Math.floor(rnd(13, i, 9) * 2)) % cols, bh2 = 30 + Math.floor(rnd(17, i, 2) * 3) * 25;
+        if (rnd(19, i, 4) > 0.35 && yy + 20 + bh2 < y + h - 12) R(x + c2 * cw + cw * 0.18, yy + 20, cw * 0.64, bh2, '#9a9da1', '#000000', 0.4, 0.9);
+        yy += bh * 0.62 + 26; i++;
+      }
+    }
+    // 세로 유리 띠: 검은 바탕 가운데에 유리(위·아래를 띄운다)
+    function slit(x, y, w, h, glassW, isDeco) {
+      R(x, y, w, h, '#0e0e10');
+      var gh = Math.max(200, (h + 2 * G.leafY) - G.glassCut);   // 문짝 세로 − 287
+      if (gh > h - 40) gh = h - 40;
+      var gw = Math.min(glassW, w - 10), gx = x + (w - gw) / 2, gy = y + (h - gh) / 2;
+      if (isDeco) deco(gx, gy, gw, gh);
+      else { R(gx, gy, gw, gh, '#b3b6b9', '#000000', 0.8); LN(gx + gw * 0.3, gy, gx + gw * 0.3, gy + gh, '#ffffff', 0.5, 0.35); }   // 불투명 유리(카달로그 그림 색)
+    }
+
+    // 판넬 넓이(px,py,pw,ph)를 손잡이 쪽부터 세로 조각(cols)으로 나눠 그린다
+    //  cols: [{w:240, fill:'point'|'panel'|'ds', rows:n} | {flex:true,...} | {w:90, slit:60} | {w:240, deco:true}]
+    function drawCols(cols, px, py, pw, ph, fromLeft) {
+      var j = G.joint, fixed = 0, nFlex = 0, i;
+      for (i = 0; i < cols.length; i++) { if (cols[i].flex) nFlex++; else fixed += cols[i].w; }
+      var flexW = nFlex ? Math.max(40, (pw - fixed - j * (cols.length - 1)) / nFlex) : 0;
+      var pos = 0, out = [];
+      for (i = 0; i < cols.length; i++) {
+        var c = cols[i], w = c.flex ? flexW : c.w;
+        if (pos + w > pw) w = Math.max(0, pw - pos);
+        var x = fromLeft ? (px + pos) : (px + pw - pos - w);
+        if (c.slit || c.deco) {
+          slit(x, py, w, ph, c.deco ? (w - 20) : c.slit, !!c.deco);
+        } else {
+          var src = srcOf(c.fill);
+          if (c.fill === 'panel') PH(src, px, py, pw, ph, x, py, w, ph);
+          else PH(src, x, py, w, ph, x, py, w, ph);
+          if (c.rows > 1) {
+            var rh = (ph - j * (c.rows - 1)) / c.rows, k;
+            for (k = 1; k < c.rows; k++) R(x, py + k * rh + (k - 1) * j, w, j, JNT);
+          }
+        }
+        out.push({ x:x, w:w });
+        if (i < cols.length - 1) R(fromLeft ? (x + w) : (x - j), py, j, ph, JNT);
+        pos += w + j;
+      }
+      return out;
+    }
+
+    // 가로 단(rows): 위·아래는 같은 높이로 늘어나고 가운데 단(midH)은 고정. bar > 0이면 단 사이에 스테인리스 띠
+    //  돌려주는 값: [{y,h,fill}] — 소대에도 같은 단을 그린다
+    function rowBands(py, ph) {
+      var j = G.joint, bar = dp.bar || 0, mid = Math.min(dp.midH || 500, ph * 0.4);
+      var sep = bar ? bar : j;
+      var side = (ph - mid - 2 * sep) / 2;
+      return [
+        { y: py, h: side, fill: 'panel' },
+        { y: py + side, h: sep, fill: bar ? 'bar' : 'joint' },
+        { y: py + side + sep, h: mid, fill: dp.midFill || 'panel' },
+        { y: py + side + sep + mid, h: sep, fill: bar ? 'bar' : 'joint' },
+        { y: py + side + 2 * sep + mid, h: side, fill: 'panel' }
+      ];
+    }
+    function drawBands(bands, x, w, ax, aw, py, ph) {
+      bands.forEach(function (b) {
+        if (b.y + b.h <= py || b.y >= py + ph) return;
+        var y0 = Math.max(b.y, py), h0 = Math.min(b.y + b.h, py + ph) - y0;
+        if (b.fill === 'bar') { R(x, y0, w, h0, STS, '#000000', 0.5); LN(x, y0 + h0 * 0.35, x + w, y0 + h0 * 0.35, '#ffffff', 0.6, 0.55); }
+        else if (b.fill === 'joint') R(x, y0, w, h0, JNT);
+        else if (b.fill === 'point') PH(POINT_SRC, ax, b.y, aw, b.h, x, y0, w, h0);
+        else PH(panelSrc, ax, py, aw, ph, x, y0, w, h0);
+      });
+    }
+
+    // ── 1. 바탕 ──
+    R(0, 0, fw, fh, BLK);
+
+    // ── 2. 문틀 ──
+    R(0, 0, lf, fh, 'almV');
+    R(fw - rf, 0, rf, fh, 'almV');
+    if (!hasFix) {
+      R(lf, 0, inner, G.topFr, 'almH');
+    } else {
+      R(lf, 0, inner, G.capFr, 'almH');
+      R(lf, yBar, inner, G.fixBar, 'almH');
+    }
+    // 문틀 단(뚜껑 30 → 프레임 → 날개) 선
+    var stepC = '#3a2f2a';
+    var cap = G.capFr;
+    LN(cap * 0.45, 0, cap * 0.45, fh, stepC, 0.6, 0.9);
+    LN(fw - cap * 0.45, 0, fw - cap * 0.45, fh, stepC, 0.6, 0.9);
+    LN(cap * 0.45, cap * 0.45, fw - cap * 0.45, cap * 0.45, stepC, 0.6, 0.9);
+    if (!hasL) LN(45, yTop - 20, 45, yBot, stepC, 0.6, 0.7);
+    if (!hasR) LN(fw - 45, yTop - 20, fw - 45, yBot, stepC, 0.6, 0.7);
+    var yb0 = hasFix ? yBar : 0, tf = hasFix ? G.fixBar : G.topFr;
+    LN(lf * 0.7, yb0 + tf - 20, fw - rf * 0.7, yb0 + tf - 20, stepC, 0.6, 0.7);
+    if (!hasFix) LN(cap, cap + 22, fw - cap, cap + 22, stepC, 0.5, 0.5);
+
+    // ── 3. 문짝 ──
+    R(xDL, yTop, doorW, doorH, LEAF);
+    R(xDL, yTop, doorW, doorH, 'none', '#000000', 1.2);
+    var px = xDL + G.leafX, py = yTop + G.leafY, pw = doorW - 2 * G.leafX, ph = doorH - 2 * G.leafY;
+    var bands = null, placed, keyOff;
+    if (M.design === 'nn-rows') {
+      bands = rowBands(py, ph);
+      drawBands(bands, px, pw, px, pw, py, ph);
+      keyOff = dp.keyCx || 120;
+    } else if (dp.cols && dp.cols.length) {
+      placed = drawCols(dp.cols, px, py, pw, ph, keyLeft);
+      keyOff = dp.keyCx || (!dp.cols[0].flex ? dp.cols[0].w / 2 : 120);
+    } else {
+      PH(panelSrc, px, py, pw, ph, px, py, pw, ph);
+      keyOff = dp.keyCx || 120;
+    }
+    R(px, py, pw, ph, 'none', '#000000', 0.8, 0.8);
+    var keyCx = keyLeft ? (px + keyOff) : (px + pw - keyOff);
+
+    // 소대에 같이 긋는 가로 줄(문짝이 가로로 나뉜 모델)
+    var hLines = [];
+    if (dp.sideRows > 1) {
+      var rh2 = (ph - G.joint * (dp.sideRows - 1)) / dp.sideRows;
+      for (var k2 = 1; k2 < dp.sideRows; k2++) hLines.push(py + k2 * rh2 + (k2 - 1) * G.joint);
+    }
+
+    // ── 4. 소대 ──
+    function sidePanel(sx, sy, sw2, sh) {
+      // 판(또는 문짝과 같은 가로 단) + 유리면 가운데 좁은 유리(소대 판 − 101)
+      if (bands) drawBands(bands, sx, sw2, sx, sw2, sy, sh);
+      else {
+        PH((dp.sideFill === 'point') ? POINT_SRC : panelSrc, sx, sy, sw2, sh, sx, sy, sw2, sh);
+        hLines.forEach(function (ly) { if (ly > sy && ly < sy + sh) R(sx, ly, sw2, G.joint, JNT); });
+      }
+      if (state.material === 'glass') {
+        var gw = sw2 + 2 * G.slBX + 18 - G.sideGlassCut;     // 소대 판(보이는 폭 + 물림) − 101
+        if (gw >= 30) {
+          var gh = Math.max(200, sh - 285), gx = sx + (sw2 - gw) / 2, gy = sy + (sh - gh) / 2;
+          R(gx - 6, gy - 6, gw + 12, gh + 12, '#0e0e10');
+          R(gx, gy, gw, gh, 'glass', '#000000', 0.8);
+        }
+      }
+      R(sx, sy, sw2, sh, 'none', '#000000', 0.8, 0.8);
+    }
+    function drawSide(x, w) {
+      if (w <= 0) return;
+      R(x, yTop, w, doorH, LEAF);
+      if (isOpen) {
+        R(x, yTop, w, doorH, 'none', '#000000', 1.2);
+        if (w - 2 * G.leafX > 0) sidePanel(x + G.leafX, py, w - 2 * G.leafX, ph);
+        return;
+      }
+      if (w - 2 * G.slBX > 0 && doorH - 2 * G.slBY > 0) sidePanel(x + G.slBX, yTop + G.slBY, w - 2 * G.slBX, doorH - 2 * G.slBY);
+    }
+    drawSide(xSL, sLW);
+    drawSide(xSR, sRW);
+
+    // ── 5. 소대 기둥 ──
+    if (mL > 0) { R(xML, yTop, mL, doorH, 'almV'); LN(xML + mL * 0.5, yTop, xML + mL * 0.5, yBot, stepC, 0.5, 0.7); }
+    if (mR > 0) { R(xMR, yTop, mR, doorH, 'almV'); LN(xMR + mR * 0.5, yTop, xMR + mR * 0.5, yBot, stepC, 0.5, 0.7); }
+
+    // ── 6. 남마 ──
+    if (hasFix && fixH > 0) {
+      R(lf, yFix, inner, fixH, LEAF);
+      var fx = lf + G.fixB, fy = yFix + G.fixB, fwid = inner - 2 * G.fixB, fhei = fixH - 2 * G.fixB;
+      if (fwid > 0 && fhei > 0) {
+        if (state.fixMat === 'glass') R(fx, fy, fwid, fhei, 'glass', '#000000', 1);
+        else { PH(panelSrc, fx, fy, fwid, fhei, fx, fy, fwid, fhei); R(fx, fy, fwid, fhei, 'none', '#000000', 0.8, 0.8); }
+      }
+    }
+
+    // ── 7. 문지방(은색) ──
+    R(lf, yBot, inner, G.btm, SLV);
+    R(lf, yBot, inner, G.btm, 'none', '#000000', 1);
+
+    // ── 8. 전자키 — 기본은 문틀 바닥에서 1000(가정), 모델 표에 키높이가 있으면 그 값 ──
+    var keyFromBtm = 1000;
+    // 가로 단 모델(N320·N321): 키를 가운데 단의 한가운데에 둔다(카달로그 그림). 작업지시서 키높이(970 등)는 dp.keyHNote에 참고로만 둔다
+    var keyCy = bands ? (bands[2].y + bands[2].h / 2) : (fh - keyFromBtm);
+    var keyData = null;
+    if (data.keys && state.keyId) {
+      for (var ki = 0; ki < data.keys.length; ki++) if (data.keys[ki].id === state.keyId) keyData = data.keys[ki];
+    }
+    var keyW = (keyData && keyData.w) ? keyData.w : 83;
+    var keyH = (keyData && keyData.h) ? keyData.h : 345;
+    var keyX = keyCx - keyW / 2, keyY = keyCy - keyH / 2;
+    if (keyData && keyData.image) {
+      shapes.push({ t:'image', x:keyX*sc, y:keyY*sc, w:keyW*sc, h:keyH*sc, href:keyData.image });
+    } else {
+      R(keyX, keyY, keyW, keyH, '#1a1a1a', '#444444', 0.5);
+    }
+
+    // ── 9. 외곽 ──
+    shapes.push({ t:'rect', x:0, y:0, w:VW, h:VH, fill:'none', stroke:'#000000', sw:1.5 });
+
+    // 소대 판 크기(엑셀 값) — 화면 아래 글에 쓰는 값
+    var sideMM = 0;
+    if (isOpen) sideMM = Math.max(sLW, sRW);
+    else if (nSide === 1) sideMM = fw - doorW - 122;          // 가로 − 1082 (문 960 기준)
+    else if (nSide === 2) sideMM = (fw - doorW - 125) / 2 + 8; // (가로 − 1085)/2 + 8
+    return {
+      width: VW, height: VH, shapes: shapes,
+      meta: {
+        doorW: Math.round(doorW), doorH: Math.round(doorH),
+        frameW: Math.round(fw), frameH: Math.round(fh),
+        sideW: Math.round(Math.max(0, sideMM)),
+        nSide: (sLW > 0 ? 1 : 0) + (sRW > 0 ? 1 : 0),
+        fixMM: Math.round(hasFix ? Math.max(0, fh - (doorH + 161) - 5) : 0)   // 남마 판 세로 = 남마포함높이 − 세로 − 5 (엑셀 N34)
       }
     };
   }
