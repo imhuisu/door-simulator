@@ -1585,6 +1585,8 @@
   //   - 모델별 전면판 나눔(키 쪽 200·240 등)                                     … AJ7~ 모델 표
   // ═══════════════════════════════════════════
   function buildRegen(state, data, M, panelSrc) {
+    // 리젠도어는 소대·남마(사이드 픽스·상부 픽스) 모두 판재 — 유리 불가(희수 2026-11-23). 넘어온 값이 유리여도 판재로 그린다
+    state = Object.assign({}, state, { material: 'panel', fixMat: 'panel' });
     var shapes = [];
     var G = {
       sideFr: 40,     // 문짝 옆 기둥이 보이는 폭

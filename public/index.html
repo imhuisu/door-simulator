@@ -570,7 +570,8 @@ function buildSideUI() {
   document.getElementById('sidePosR').className = 'btn' + (state.glass === 'R' && !isOpen ? ' on' : '');
   document.getElementById('sidePos2').className = 'btn' + (state.glass === 2 && !isOpen ? ' on' : '');
   var matRow = document.getElementById('sideMatRow');
-  matRow.style.display = hasGlass ? 'grid' : 'none';
+  if (isRegen) state.material = 'panel';   // 리젠도어 소대는 판재만(유리 불가, 희수 11/23)
+  matRow.style.display = (hasGlass && !isRegen) ? 'grid' : 'none';
   if (hasGlass) {
     document.getElementById('matPanelBtn').className = 'btn' + (state.material === 'panel' ? ' on' : '');
     document.getElementById('matGlassBtn').className = 'btn' + (state.material === 'glass' ? ' on' : '');
@@ -616,7 +617,9 @@ function buildFixUI() {
   document.getElementById('fixNoneBtn').className = 'btn' + (!state.fix ? ' on' : '');
   document.getElementById('fixHaveBtn').className = 'btn' + (state.fix ? ' on' : '');
   var row = document.getElementById('fixMatRow');
-  row.style.display = state.fix ? 'grid' : 'none';
+  var isRegen = (state.product === '리젠도어');
+  if (isRegen) state.fixMat = 'panel';   // 리젠도어 남마(상부 픽스)도 판재만
+  row.style.display = (state.fix && !isRegen) ? 'grid' : 'none';
   document.getElementById('dhRow').style.display = state.fix ? '' : 'none';
   if (state.fix) {
     document.getElementById('fixMatPanelBtn').className = 'btn' + (state.fixMat === 'panel' ? ' on' : '');
